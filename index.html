@@ -67,6 +67,9 @@ button{cursor:pointer}
 .parts{display:flex;flex-wrap:wrap;gap:6px}
 .parts span{font-family:var(--f-mono);font-size:12px;color:var(--dim);border:1px solid var(--line);border-radius:6px;padding:2px 7px}
 .parts b{color:var(--fg);font-weight:500}
+.parts span.low{border-color:#6b3a30}.parts span.low b{color:var(--warn)}
+.summary{font-size:13px;font-weight:700;line-height:1.5}
+.rbtns .seg{flex:2}.rbtns .seg button{min-width:0}
 .advice{margin:0;padding-left:1.1em;font-size:13px;color:#d6cfc1}
 .advice li.bad{color:#f2b2a4}
 .rbtns{display:flex;gap:8px;width:100%;max-width:420px}
@@ -119,7 +122,7 @@ td .of{color:var(--warn)}
         <div class="cardtxt" id="cardtxt"></div>
       </div>
       <div class="verdict" id="verdict"></div>
-      <div class="rbtns"><button class="btn" id="toggleAns">答え合わせを隠す</button><button class="btn primary" id="again">もう一枚</button></div>
+      <div class="rbtns"><div class="seg" id="ovSeg" role="group" aria-label="答え合わせの表示"></div><button class="btn primary" id="again">もう一枚</button></div>
     </div>
   </section>
 
@@ -134,7 +137,7 @@ td .of{color:var(--warn)}
       <select id="effect" aria-label="カラーエフェクト"></select>
       <div class="inline"><label><input type="checkbox" id="vignette"> ビネット（周辺減光）</label></div>
     </div>
-    <div class="inline"><label><input type="checkbox" id="guide"> ファインダーに中心マークと頭の目安線を出す（練習用）</label></div>
+    <div class="inline"><label><input type="checkbox" id="guide"> ファインダーに中心マークと三分割線を出す（練習用）</label></div>
     <p class="modelnote" id="modelNote"></p>
 
     <details id="tableBox"><summary>この機種のズレ早見表</summary><div class="tblwrap"><table id="shiftTable"></table></div>
@@ -178,13 +181,14 @@ const EFFECTS={normal:{label:'ノーマル',css:''},magenta:{label:'ソフトマ
   green:{label:'フェードグリーン',tint:'#7fbf8f',a:.3,css:'contrast(.9) saturate(.75) brightness(1.03)'},warm:{label:'ウォームトーン',tint:'#ffb070',a:.3,css:'saturate(1.05)'},
   sepia:{label:'セピア',css:'sepia(.85) contrast(1.02)'},blue:{label:'ライトブルー',tint:'#8fc8ff',a:.3,css:''},mono:{label:'モノクロ',css:'grayscale(1) contrast(1.1)'}};
 const VENUES=[{label:'明るい',amb:.95},{label:'普通',amb:.6},{label:'暗いライブハウス',amb:.28}];
+const OVS=[{k:'shift',label:'ズレ'},{k:'balance',label:'バランス'},{k:'none',label:'なし'}];
 const MODES=[{k:'quiz',label:'出題'},{k:'free',label:'フリー'},{k:'photo',label:'写真'},{k:'live',label:'ライブ'}];
 const DC=0.4; // 補正モードの基準距離(m)
 const TAN_LONG=0.665; // スマホ広角(26mm相当)の長辺半画角tan
 
 /* ---------- 状態 ---------- */
 const S={model:'mini12',focus:0,mode:'quiz',D:0.6,venue:1,bright:0,effect:'normal',vignette:false,guide:false,au:0,av:0,
-  quiz:null,calib:{},photo:null,video:null,stream:null,shot:null,showAns:true};
+  quiz:null,calib:{},photo:null,video:null,stream:null,shot:null,overlay:'shift'};
 try{const s=JSON.parse(localStorage.getItem('cheki-practice-v1')||'{}');if(s.model&&MODELS.find(m=>m.id===s.model))S.model=s.model;if(s.calib)S.calib=s.calib;if(s.venue!=null)S.venue=s.venue;}catch(e){}
 function save(){try{localStorage.setItem('cheki-practice-v1',JSON.stringify({model:S.model,calib:S.calib,venue:S.venue}))}catch(e){}}
 
@@ -312,8 +316,7 @@ function drawFinder(t){
     if(!si){fctx.fillStyle='#000';fctx.fillRect(0,0,fW,fH)}
     else drawRegion(fctx,fW,fH,si,S.au+g.pu*si.s,S.av+g.pv*si.s,g.cov*g.Lx*si.s,g.cov*g.Ly*si.s);
   }
-  if(S.guide&&isScene()){const[lo,hi]=naturalFrame(g.D).hr,y=(lo+hi)/2*fH;fctx.strokeStyle='rgba(242,163,58,.85)';fctx.lineWidth=Math.max(1.5,fW/200);
-    fctx.beginPath();fctx.moveTo(0,y);fctx.lineTo(fW*.1,y);fctx.moveTo(fW*.9,y);fctx.lineTo(fW,y);fctx.stroke()}
+  if(S.guide){fctx.strokeStyle='rgba(255,255,255,.35)';fctx.lineWidth=Math.max(1,fW/300);fctx.beginPath();for(const f of[1/3,2/3]){fctx.moveTo(f*fW,0);fctx.lineTo(f*fW,fH);fctx.moveTo(0,f*fH);fctx.lineTo(fW,f*fH)}fctx.stroke()}
   if(S.guide){fctx.strokeStyle='rgba(255,255,255,.55)';fctx.lineWidth=Math.max(1,fW/260);const r=fW*.06;fctx.beginPath();fctx.arc(fW/2,fH/2,r,0,7);fctx.stroke();fctx.beginPath();fctx.moveTo(fW/2-r*.4,fH/2);fctx.lineTo(fW/2+r*.4,fH/2);fctx.moveTo(fW/2,fH/2-r*.4);fctx.lineTo(fW/2,fH/2+r*.4);fctx.stroke()}
 }
 let t0=performance.now();
@@ -367,48 +370,81 @@ function showResult(){
   pc.style.filter=`contrast(1.06) saturate(.95) ${ef.css||''} ${!isScene()&&m.fx?`brightness(${Math.pow(2,S.bright*.35).toFixed(2)})`:''} ${blur>.15?`blur(${blur.toFixed(2)}px)`:''}`.trim();
   $('cardtxt').textContent=`${m.name}  ${g.D.toFixed(2)}m`;
   const dev=$('dev');dev.style.transition='none';dev.style.opacity='1';void dev.offsetWidth;dev.style.transition='';dev.style.opacity='0';
-  drawMarks();mc.style.opacity='0';
+  sh.J=sh.scene?judge(sh):null;drawMarks();mc.style.opacity='0';
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  clearTimeout(showResult.tm);showResult.tm=setTimeout(()=>{mc.style.transition='opacity .4s';mc.style.opacity=S.showAns?'1':'0'},reduce?400:3300);
-  $('toggleAns').textContent=S.showAns?'答え合わせを隠す':'答え合わせを見る';
+  clearTimeout(showResult.tm);showResult.tm=setTimeout(()=>{mc.style.transition='opacity .4s';mc.style.opacity='1'},reduce?400:3300);
+  renderOv();
   renderVerdict();
 }
 
 function drawMarks(){
-  const W=mc.width,H=mc.height,g=S.shot.g;mctx.clearRect(0,0,W,H);
-  const fx=W/2+g.pu/g.Lx*W/2,fy=H/2-g.pv/g.Ly*H/2,fw=g.cov*W,fh=g.cov*H,lw=Math.max(2,W/150);
-  mctx.save();mctx.lineWidth=lw;mctx.setLineDash([lw*4,lw*3]);mctx.strokeStyle='rgba(255,255,255,.95)';mctx.shadowColor='rgba(0,0,0,.8)';mctx.shadowBlur=lw*2;
-  mctx.strokeRect(fx-fw/2,fy-fh/2,fw,fh);mctx.setLineDash([]);
-  const cr=W*.04;mctx.beginPath();mctx.moveTo(fx-cr,fy);mctx.lineTo(fx+cr,fy);mctx.moveTo(fx,fy-cr);mctx.lineTo(fx,fy+cr);mctx.stroke();
-  mctx.strokeStyle='#f2a33a';mctx.beginPath();mctx.arc(W/2,H/2,cr*.6,0,7);mctx.stroke();
-  if(Math.hypot(W/2-fx,H/2-fy)>cr*.8){mctx.beginPath();mctx.moveTo(fx,fy);mctx.lineTo(W/2,H/2);mctx.stroke();
-    const a=Math.atan2(H/2-fy,W/2-fx),h=cr*.7;mctx.beginPath();mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a-.5),H/2-h*Math.sin(a-.5));mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a+.5),H/2-h*Math.sin(a+.5));mctx.stroke()}
-  mctx.font=`700 ${W*.05}px "Zen Kaku Gothic New",sans-serif`;mctx.fillStyle='#fff';mctx.textBaseline='bottom';
-  mctx.fillText('点線＝ファインダーで見えていた範囲',W*.04,H*.97);
-  if(S.shot.scene){const[lo,hi]=S.shot.fr.hr;mctx.shadowBlur=0;mctx.fillStyle='rgba(242,163,58,.3)';mctx.fillRect(0,lo*H,W,(hi-lo)*H);
-    mctx.fillStyle='#f2a33a';mctx.shadowColor='rgba(0,0,0,.8)';mctx.shadowBlur=lw*2;mctx.textBaseline='top';mctx.fillText('頭のてっぺんの目安',W*.04,hi*H+lw)}
+  const W=mc.width,H=mc.height,sh=S.shot,g=sh.g,lw=Math.max(2,W/150),ov=S.overlay;mctx.clearRect(0,0,W,H);
+  if(ov==='none')return;
+  mctx.save();mctx.lineWidth=lw;mctx.shadowColor='rgba(0,0,0,.8)';mctx.shadowBlur=lw*2;
+  mctx.font=`700 ${W*.05}px "Zen Kaku Gothic New",sans-serif`;
+  if(ov==='shift'){
+    const fx=W/2+g.pu/g.Lx*W/2,fy=H/2-g.pv/g.Ly*H/2,fw=g.cov*W,fh=g.cov*H;
+    mctx.setLineDash([lw*4,lw*3]);mctx.strokeStyle='rgba(255,255,255,.95)';mctx.strokeRect(fx-fw/2,fy-fh/2,fw,fh);mctx.setLineDash([]);
+    const cr=W*.04;mctx.beginPath();mctx.moveTo(fx-cr,fy);mctx.lineTo(fx+cr,fy);mctx.moveTo(fx,fy-cr);mctx.lineTo(fx,fy+cr);mctx.stroke();
+    mctx.strokeStyle='#f2a33a';mctx.beginPath();mctx.arc(W/2,H/2,cr*.6,0,7);mctx.stroke();
+    if(Math.hypot(W/2-fx,H/2-fy)>cr*.8){mctx.beginPath();mctx.moveTo(fx,fy);mctx.lineTo(W/2,H/2);mctx.stroke();
+      const a=Math.atan2(H/2-fy,W/2-fx),h=cr*.7;mctx.beginPath();mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a-.5),H/2-h*Math.sin(a-.5));mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a+.5),H/2-h*Math.sin(a+.5));mctx.stroke()}
+    mctx.fillStyle='#fff';mctx.textBaseline='bottom';mctx.fillText('点線＝ファインダーで見えていた範囲',W*.04,H*.97);
+  }else{
+    mctx.strokeStyle='rgba(255,255,255,.55)';mctx.lineWidth=Math.max(1,lw*.6);mctx.beginPath();
+    for(const f of[1/3,2/3]){mctx.moveTo(f*W,0);mctx.lineTo(f*W,H);mctx.moveTo(0,f*H);mctx.lineTo(W,f*H)}mctx.stroke();
+    const J=sh.J;
+    if(J){
+      const[e0,e1]=J.eyeBand;mctx.shadowBlur=0;mctx.fillStyle='rgba(242,163,58,.22)';mctx.fillRect(0,e0*H,W,Math.max(lw,(e1-e0)*H));
+      mctx.shadowBlur=lw*2;mctx.strokeStyle='#f2a33a';mctx.lineWidth=lw*1.2;const y=J.eye*H;
+      mctx.beginPath();mctx.moveTo(0,y);mctx.lineTo(W*.16,y);mctx.moveTo(W*.84,y);mctx.lineTo(W,y);mctx.stroke();
+      mctx.fillStyle='#f2a33a';mctx.textBaseline='bottom';mctx.fillText('目線',W*.02,y-lw);
+      if(J.hand){mctx.strokeStyle='#e8755e';mctx.lineWidth=lw;mctx.beginPath();mctx.arc(J.hand[0]*W,J.hand[1]*H,W*.09,0,7);mctx.stroke()}
+      mctx.fillStyle=J.cut.ok?'#9fe0ad':'#ff9a85';mctx.textBaseline='bottom';
+      mctx.fillText(`下端：${J.cut.txt||J.cut.name+'で切れ'} ${J.cut.ok?'○':J.cut.soft?'△':'×'}`,W*.04,H*.97);
+    }else{mctx.fillStyle='#fff';mctx.textBaseline='bottom';mctx.fillText('三分割線',W*.04,H*.97)}
+  }
   mctx.restore();
 }
 
-/* 採点：横位置30・頭上の余白50・ピント10・明るさ10（全身の足切れ・ひざ切りは減点） */
+/* 構図バランスの採点
+   上下30（頭上の余白と目線の高さ）・左右20・切れ位置15（関節で切らない）・画面の使い方15（手の見切れ・人物の大きさ）・ピント10・明るさ10 */
+const CUTS=[ // 下端（m・カメラ高=0）がどこを通るか。上から順
+ {y:-0.08,name:'あご',ok:false},{y:-0.16,name:'首',ok:false},{y:-0.37,name:'胸',ok:true},{y:-0.43,name:'ひじ',ok:false,soft:true},
+ {y:-0.47,name:'ウエストの上',ok:true},{y:-0.55,name:'腰',ok:false},{y:-1.10,name:'太もも',ok:true},{y:-1.21,name:'ひざ',ok:false},
+ {y:-1.34,name:'すね',ok:true},{y:-1.49,name:'足首',ok:false},{y:-99,name:'足元',ok:true,txt:'足元まで入っている'}];
 function judge(sh){
   const g=sh.g,D=g.D,fr=sh.fr,fm=g.fm,m=g.m,items=[];
   const bob=0.006*Math.sin(sh.t*2.1),X=(S.mode==='quiz'&&S.quiz?S.quiz.X:0)+0.012*Math.sin(sh.t*1.3);
-  const vOf=Y=>(Y+bob)/D-sh.av,fromTop=vv=>(g.Ly-vv)/(2*g.Ly),pct=x=>Math.round(x*100)+'%';
-  // 横位置
-  const dx=(X/D-sh.au)/(2*g.Lx),ax=Math.abs(dx);
-  const sX=Math.round(30*Math.max(0,Math.min(1,1-(ax-0.03)/0.17)));
-  if(ax>0.04)items.push({bad:true,t:`顔が写真の${dx>0?'右':'左'}寄り（中心から${pct(ax)}）。ファインダーでは顔を少し${dx>0?'左':'右'}に置く。`});
-  // 頭上の余白
-  const head=fromTop(vOf(BODY.top)),faceY=fromTop(vOf(BODY.face)),[lo,hi]=fr.hr;let sH;
-  if(head<-0.01){sH=0;items.push({bad:true,t:'頭が切れています。ファインダーでは頭をもう少し下に置く。'})}
-  else{const dev=head<lo?lo-head:head>hi?head-hi:0;sH=Math.round(50*Math.max(0,1-dev/0.12));
-    if(head>hi)items.push({bad:true,t:`頭の上が空きすぎ（余白${pct(head)}、目安${pct(lo)}〜${pct(hi)}）。${faceY>0.5&&fr.k!=='full'?'顔が写真の真ん中より下に来ています。':''}ファインダーでは頭をもう少し上に。`});
-    else if(head<lo)items.push({bad:true,t:`頭の上が窮屈（余白${pct(Math.max(0,head))}、目安${pct(lo)}〜${pct(hi)}）。ほんの少しだけ下げる。`});
-    else items.push({t:`頭上の余白${pct(head)}。${fr.label}としてちょうどいい位置です。`})}
-  let pen=0;
-  if(fr.k==='full'&&fromTop(vOf(BODY.feet))>1){pen+=15;items.push({bad:true,t:'足先が切れています。全身は足元まで入れる。'})}
-  if(fr.k==='knee'&&Math.abs((-g.Ly+sh.av)*D-bob-BODY.knee)<0.05){pen+=5;items.push({bad:true,t:'ちょうどひざで切れています。少し上か下で切ると自然です。'})}
+  const vOf=Y=>(Y+bob)/D-sh.av,fromTop=vv=>(g.Ly-vv)/(2*g.Ly),fromLeft=x=>((x/D-sh.au)+g.Lx)/(2*g.Lx),pct=x=>Math.round(x*100)+'%';
+  const Hm=2*g.Ly*D,[lo,hi]=fr.hr;
+  // 上下：頭上の余白と目線
+  const head=fromTop(vOf(BODY.top)),eye=fromTop(vOf(0.025)),eyeBand=[lo+0.15/Hm,hi+0.15/Hm];let sV;
+  const onThird=Math.abs(eye-1/3)<0.05;
+  if(head<-0.01){sV=0;items.push({bad:true,t:'頭が切れています。ファインダーでは頭をもう少し下に置く。'})}
+  else{const dev=head<lo?lo-head:head>hi?head-hi:0;sV=Math.round(30*Math.max(0,1-dev/0.12));
+    if(head>hi)items.push({bad:true,t:`頭上が空きすぎて（${pct(head)}）目線が上から${pct(eye)}まで下がり、画面が間延びしています。${eye>0.5&&fr.k!=='full'?'顔が真ん中より下です。':''}ファインダーでは頭をもう少し上に。`});
+    else if(head<lo)items.push({bad:true,t:`頭上が詰まって（${pct(Math.max(0,head))}）窮屈に見えます。ほんの少しだけ下げる。`});
+    else items.push({t:`目線が上から${pct(eye)}。${fr.k==='full'?'頭上と足元の余白のバランスが取れています。':onThird?'上1/3のラインに乗っていて安定感があります。':'頭上の余白とのバランスが取れています。'}`})}
+  // 左右
+  const dx=fromLeft(X)-0.5,ax=Math.abs(dx);
+  const sX=Math.round(20*Math.max(0,Math.min(1,1-(ax-0.03)/0.17)));
+  if(ax>0.04)items.push({bad:true,t:`顔が写真の${dx>0?'右':'左'}寄り（中心から${pct(ax)}）で左右の余白が不均等。ファインダーでは顔を少し${dx>0?'左':'右'}に置く。`});
+  // 切れ位置
+  const yb=(-g.Ly+sh.av)*D-bob,cut=Object.assign({},CUTS.find(c=>yb>=c.y));let sC;
+  if(cut.ok){sC=15;if(fr.k!=='full')items.push({t:`下端は${cut.name}で切れていて自然です。`})}
+  else if(fr.k==='face'&&(cut.name==='首'||cut.name==='あご')){sC=10;cut.soft=true;items.push({bad:true,t:'首で切れて少し窮屈。顔アップでも肩が少し入る距離だと安定します。'})}
+  else if(cut.soft){sC=10;items.push({bad:true,t:`${cut.name}のあたりで切れています。もう少しだけ上か下で切るとすっきりします（フリーモードなら数cm前後するのも手）。`})}
+  else{sC=4;items.push({bad:true,t:`ちょうど${cut.name}で切れています。関節の位置で切ると不自然に見えるので、少し上か下で切る。`})}
+  // 画面の使い方
+  let sS=15,hand=null;
+  const hl=fromLeft(X-0.215),hr=fromLeft(X-0.125),hy=fromTop(vOf(-0.005));
+  if(hl<-0.005&&hr>0.03&&hy>0&&hy<1){sS-=8;hand=[Math.max(0,(hl+hr)/2),hy];items.push({bad:true,t:'ピースが画面の端で半分切れています。入れるなら少し離れる、外すならはっきり外す。'})}
+  if(fr.k==='full'){const f=(BODY.top-BODY.feet)/Hm;
+    if(fromTop(vOf(BODY.feet))>1){sS-=7;items.push({bad:true,t:'足先が切れています。全身は足元まで入れる。'})}
+    else if(f<0.6){sS-=7;items.push({bad:true,t:`人物が画面の${pct(f)}と小さめで、余白が目立ちます。もう一歩近づくと画面を活かせる。`})}
+    else if(f<0.72)sS-=3}
+  sS=Math.max(0,sS);
   // ピント
   const sF=sh.bd>.25?0:sh.bd>.12?5:10;
   if(sh.bd>.25){const ok=m.modes.find(x=>D>=x.range[0]&&D<=x.range[1]);items.push({bad:true,t:`ピントが外れています（${fm.label}の範囲外）。${ok?`この距離なら「${ok.label}」。`:''}`})}
@@ -419,26 +455,33 @@ function judge(sh){
   else if(sh.Lsub>1.25)sE=6;
   else if(sh.Lsub<.5){sE=3;items.push({bad:true,t:`暗めの仕上がり。${m.fx&&S.bright<=0?'明るさ設定を＋にするか、':''}フラッシュが届く距離まで近づく。`})}
   else if(sh.Lsub<.62)sE=7;
-  return{score:Math.max(0,sX+sH+sF+sE-pen),items,parts:[['横位置',sX,30],['頭上の余白',sH,50],['ピント',sF,10],['明るさ',sE,10]]};
+  // ひとこと
+  const comp=sV+sX+sC+sS,good=comp>=72;
+  const summary=`${fr.label}｜目線 上から${pct(Math.max(0,eye))}・${cut.txt||'下端は'+cut.name}・左右${ax<=0.04?'均等':'ずれ'}　→　${good?'構図のバランスが取れています':comp>=50?'バランスにもう一工夫':'バランスが崩れています'}`;
+  return{score:Math.max(0,comp+sF+sE),items,summary,eye,eyeBand,cut,hand,
+    parts:[['上下',sV,30],['左右',sX,20],['切れ位置',sC,15],['画面',sS,15],['ピント',sF,10],['明るさ',sE,10]]};
 }
 function renderVerdict(){
-  const sh=S.shot,g=sh.g,v=$('verdict'),sp=shiftPct(g),fm=g.fm,m=g.m;
+  const sh=S.shot,g=sh.g,v=$('verdict'),sp=shiftPct(g),fm=g.fm;
   const items=[];let html='';
   if(sh.scene){
-    const J=judge(sh);items.push(...J.items);
-    if(fm.corr&&g.D>.7)items.push({bad:true,t:'補正モードのまま離れると、今度は逆方向にズレます。'});
+    const J=sh.J;
+    items.push(...J.items.filter(i=>i.bad),...J.items.filter(i=>!i.bad));
+    if(fm.corr&&g.D>.7)items.unshift({bad:true,t:'補正モードのまま離れると、今度は逆方向にズレます。'});
     const score=J.score,lbl=score>=90?'バッチリ':score>=75?'いい感じ':score>=50?'惜しい':'もう一歩';
-    html+=`<div class="score"><span class="num">${score}</span><span class="lbl">${lbl}</span><span style="color:var(--dim);font-size:13px">${sh.fr.label}・${g.D.toFixed(2)}m・${fm.label}</span></div>`;
-    html+=`<div class="parts">${J.parts.map(p=>`<span>${p[0]} <b>${p[1]}</b>/${p[2]}</span>`).join('')}</div>`;
+    html+=`<div class="score"><span class="num">${score}</span><span class="lbl">${lbl}</span><span style="color:var(--dim);font-size:13px">${g.D.toFixed(2)}m・${fm.label}</span></div>`;
+    html+=`<div class="summary">${J.summary}</div>`;
+    html+=`<div class="parts">${J.parts.map(p=>`<span class="${p[1]<p[2]*.7?'low':''}">${p[0]} <b>${p[1]}</b>/${p[2]}</span>`).join('')}</div>`;
   }else{
     if(sh.bd>.25)items.push({bad:true,t:`この距離（${g.D.toFixed(2)}m）は「${fm.label}」のピント範囲外。ボケて写ります。`});
     if(fm.corr&&g.D>.7)items.push({bad:true,t:'補正モードのまま離れると逆方向にズレます。'});
-    items.push({t:'点線がファインダーで見えていた範囲。実際の写りとの差を確認しよう。'});
+    items.push({t:'「ズレ」でファインダーとの差、「バランス」で三分割線を確認できます。'});
   }
   html+=`<div class="shift">写真の中心はファインダーより ${fmtShift(sp)}</div>`;
   html+=`<ul class="advice">${items.map(i=>`<li class="${i.bad?'bad':''}">${i.t}</li>`).join('')}</ul>`;
   v.innerHTML=html;
 }
+function renderOv(){seg($('ovSeg'),OVS,OVS.findIndex(o=>o.k===S.overlay),i=>{S.overlay=OVS[i].k;drawMarks();mc.style.opacity='1';renderOv()})}
 
 /* ---------- 出題 ---------- */
 function newQuiz(){
@@ -510,7 +553,6 @@ $('calX').oninput=e=>setCal('bx',+e.target.value);$('calY').oninput=e=>setCal('b
 $('calReset').onclick=()=>{delete S.calib[M().id];save();renderAll()};
 $('shutter').onclick=shoot;
 $('again').onclick=()=>{$('result').hidden=true;if(S.mode==='quiz')newQuiz();renderAll()};
-$('toggleAns').onclick=()=>{S.showAns=!S.showAns;mc.style.opacity=S.showAns?'1':'0';$('toggleAns').textContent=S.showAns?'答え合わせを隠す':'答え合わせを見る'};
 $('pickPhoto').onclick=()=>$('photoInput').click();
 $('photoInput').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{S.photo=img;S.au=S.av=0;renderAll()};img.onerror=()=>toast('この画像は読み込めませんでした。JPEGかPNGで試してください。');img.src=URL.createObjectURL(f);e.target.value=''};
 // ドラッグで構図
