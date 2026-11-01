@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+</head>
+<body>
+<title>チェキ練習機</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@400;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: one-screen camera — model strip, eyepiece stage, settings panel below. Single dark look (viewfinder world). */
+:root{
+  --bg:#12110f; --panel:#1b1916; --line:#2f2b25; --fg:#ece6da; --dim:#9c9486;
+  --accent:#f2a33a; --accent-ink:#1a1206; --film:#f6f4ee; --ok:#86c995; --warn:#e8755e;
+  --f-display:"Dela Gothic One","Hiragino Sans","Noto Sans JP",sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:560px;margin:0 auto;padding-block:10px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:12px}
+.top{display:flex;flex-direction:column;gap:8px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-family:var(--f-display);font-weight:400;font-size:22px;margin:0;letter-spacing:.02em}
+.brand span{color:var(--dim);font-size:12px}
+.models{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.models::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:6px 13px;font-size:13px;white-space:nowrap}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+
+.stage{position:relative;height:clamp(330px,58vh,560px);height:clamp(330px,58svh,560px);border-radius:18px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 45%,#1d1b18 0%,#0a0908 60%,#050505 100%);touch-action:none;user-select:none;-webkit-user-select:none}
+.hint{position:absolute;left:14px;right:14px;top:10px;font-size:12px;color:var(--dim);display:flex;justify-content:space-between;gap:8px;pointer-events:none}
+.hint b{color:var(--fg);font-weight:700}
+.eyecup{position:absolute;left:50%;top:44%;transform:translate(-50%,-50%);padding:14px;border-radius:30px;background:#191817;
+  box-shadow:inset 0 2px 0 #2a2826,0 0 0 1px #000,0 10px 30px #000}
+.eyecup canvas{display:block;border-radius:12px;background:#000}
+.glass{position:absolute;inset:14px;border-radius:12px;pointer-events:none;
+  box-shadow:inset 0 0 26px 10px rgba(0,0,0,.85);background:radial-gradient(ellipse at 35% 25%,rgba(255,255,255,.06),transparent 55%)}
+.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:24px;color:var(--dim);font-size:14px}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:10px;padding:9px 14px;font-size:14px}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.shutter{position:absolute;left:50%;bottom:14px;transform:translateX(-50%);width:66px;height:66px;border-radius:50%;
+  border:4px solid #e9e4d8;background:var(--accent);box-shadow:0 0 0 3px #000,0 6px 18px #000}
+.shutter:active{transform:translateX(-50%) scale(.94)}
+.dist-badge{position:absolute;right:14px;bottom:26px;font-family:var(--f-mono);font-size:13px;color:var(--fg);background:rgba(0,0,0,.55);padding:4px 8px;border-radius:8px}
+
+.result{position:absolute;inset:0;background:rgba(5,5,5,.9);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;padding:14px 14px 12px;overflow:auto}
+.card{background:var(--film);border-radius:3px;box-shadow:0 12px 30px rgba(0,0,0,.7);position:relative;flex:0 0 auto;animation:eject .55s cubic-bezier(.2,.8,.2,1)}
+@keyframes eject{from{transform:translateY(-40px);opacity:0}to{transform:none;opacity:1}}
+.imgwrap{position:absolute;overflow:hidden;background:#222}
+.imgwrap canvas{position:absolute;inset:0;width:100%;height:100%}
+.dev{position:absolute;inset:0;background:#c8c9bc;opacity:1;transition:opacity 3.4s ease-in}
+.cardtxt{position:absolute;left:0;right:0;bottom:6%;text-align:center;font-family:var(--f-mono);font-size:10px;color:#8b8577}
+.verdict{width:100%;max-width:420px;display:flex;flex-direction:column;gap:6px}
+.score{display:flex;align-items:baseline;gap:10px}
+.score .num{font-family:var(--f-display);font-size:34px;line-height:1;color:var(--accent)}
+.score .lbl{font-weight:700}
+.shift{font-family:var(--f-mono);font-size:13px;background:#1b1916;border:1px solid var(--line);border-radius:8px;padding:6px 9px}
+.advice{margin:0;padding-left:1.1em;font-size:13px;color:#d6cfc1}
+.advice li.bad{color:#f2b2a4}
+.rbtns{display:flex;gap:8px;width:100%;max-width:420px}
+.rbtns .btn{flex:1}
+
+.panel{display:flex;flex-direction:column;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px}
+.row{display:flex;flex-direction:column;gap:6px}
+.row>label,.lab{font-size:12px;color:var(--dim);letter-spacing:.04em;display:flex;justify-content:space-between;gap:8px}
+.row .val{font-family:var(--f-mono);color:var(--fg)}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{flex:1 1 auto;min-width:64px;border:1px solid var(--line);background:#141310;border-radius:9px;padding:7px 8px;font-size:13px}
+.seg button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);background:#221a0e;font-weight:700}
+input[type=range]{width:100%;accent-color:var(--accent)}
+select{background:#141310;border:1px solid var(--line);border-radius:9px;padding:7px 9px;width:100%}
+.inline{display:flex;gap:8px;align-items:center}
+.inline label{display:flex;gap:6px;align-items:center;font-size:13px}
+.modelnote{font-size:12.5px;color:var(--dim);margin:0}
+details{border-top:1px solid var(--line);padding-top:10px}
+summary{cursor:pointer;font-size:13px;font-weight:700}
+.tblwrap{overflow-x:auto;margin-top:8px}
+table{border-collapse:collapse;width:100%;font-size:12.5px;font-variant-numeric:tabular-nums}
+th,td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{color:var(--dim);font-weight:400}
+td.m{font-family:var(--f-mono)}
+td .of{color:var(--warn)}
+.cal{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+.foot{font-size:11.5px;color:var(--dim);margin:0}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:#2a2620;border:1px solid var(--line);color:var(--fg);padding:10px 14px;border-radius:10px;font-size:13px;max-width:min(92vw,440px);z-index:20}
+@media (prefers-reduced-motion:reduce){.card{animation:none}.dev{transition-duration:.4s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>チェキ練習機</h1><span>ファインダーと写りのズレを体で覚える</span></div>
+    <div class="models" id="models" role="group" aria-label="機種"></div>
+  </header>
+
+  <section class="stage" id="stage" aria-label="ファインダー">
+    <div class="hint" id="hint"></div>
+    <div class="eyecup" id="eyecup"><canvas id="finder"></canvas><div class="glass"></div></div>
+    <div class="empty" id="photoEmpty" hidden>
+      <div>スマホで撮った写真をファインダー越しに覗けます。<br>人物を正面から撮った写真がおすすめ。</div>
+      <button class="btn primary" id="pickPhoto">写真を選ぶ</button>
+    </div>
+    <div class="dist-badge" id="distBadge"></div>
+    <button class="shutter" id="shutter" aria-label="シャッターを切る"></button>
+    <div class="result" id="result" hidden>
+      <div class="card" id="card">
+        <div class="imgwrap" id="imgwrap"><canvas id="print"></canvas><canvas id="marks"></canvas><div class="dev" id="dev"></div></div>
+        <div class="cardtxt" id="cardtxt"></div>
+      </div>
+      <div class="verdict" id="verdict"></div>
+      <div class="rbtns"><button class="btn" id="toggleAns">答え合わせを隠す</button><button class="btn primary" id="again">もう一枚</button></div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="row"><span class="lab">練習モード</span><div class="seg" id="modeSeg"></div></div>
+    <div class="row" id="distRow"><label for="dist">被写体までの距離 <span class="val" id="distVal"></span></label><input type="range" id="dist" min="0.3" max="3" step="0.05" value="0.6"></div>
+    <div class="row"><span class="lab">レンズ / ピント</span><div class="seg" id="focusSeg"></div></div>
+    <div class="row" id="venueRow"><span class="lab">会場の明るさ</span><div class="seg" id="venueSeg"></div></div>
+    <div class="row" id="fxRow" hidden>
+      <span class="lab">mini 99 の設定</span>
+      <div class="inline"><span class="lab" style="min-width:3.5em">明るさ</span><input type="range" id="bright" min="-2" max="2" step="1" value="0"><span class="val" id="brightVal" style="font-family:var(--f-mono);min-width:2em">±0</span></div>
+      <select id="effect" aria-label="カラーエフェクト"></select>
+      <div class="inline"><label><input type="checkbox" id="vignette"> ビネット（周辺減光）</label></div>
+    </div>
+    <div class="inline"><label><input type="checkbox" id="guide"> ファインダーに中心マークを出す（練習用）</label></div>
+    <p class="modelnote" id="modelNote"></p>
+
+    <details id="tableBox"><summary>この機種のズレ早見表</summary><div class="tblwrap"><table id="shiftTable"></table></div>
+      <p class="foot">「写真の中心がファインダーの中心からどちらへ何％（写真の幅・高さに対して）ずれるか」。赤字はピント範囲外。</p></details>
+    <details><summary>機種データを調整（実機合わせ）</summary>
+      <div class="cal">
+        <p class="foot">ファインダーとレンズの位置関係は外観からの推定値です。実機で 50cm 先の目印を真ん中に置いて1枚撮り、写りのズレが合うように動かしてください。</p>
+        <div class="row"><label for="calX">ファインダーの横位置（レンズ中心から） <span class="val" id="calXv"></span></label><input type="range" id="calX" min="-70" max="20" step="1"></div>
+        <div class="row"><label for="calY">ファインダーの縦位置（レンズ中心から） <span class="val" id="calYv"></span></label><input type="range" id="calY" min="-20" max="70" step="1"></div>
+        <div class="row"><label for="calC">ファインダー視野率 <span class="val" id="calCv"></span></label><input type="range" id="calC" min="70" max="100" step="1"></div>
+        <button class="btn" id="calReset">推定値に戻す</button>
+      </div>
+    </details>
+    <p class="foot">焦点距離・フィルムサイズ・クローズアップ時の視差補正の有無はメーカー公表情報、ファインダー位置・視野率・フラッシュの効き方は推定によるシミュレーションです。ライブカメラは表示環境によって使えないことがあります。</p>
+  </section>
+</div>
+<input type="file" id="photoInput" accept="image/*" hidden>
+
+<script>
+(()=>{
+'use strict';
+/* ---------- 機種データ ---------- */
+const MODELS=[
+ {id:'mini12',name:'mini 12',f:60,img:[46,62],card:[54,86],off:[4,6.5],b:[-28,22],cov:85,fx:false,
+  modes:[{label:'通常',range:[0.5,99],corr:false,cf:false},{label:'クローズアップ',range:[0.3,0.5],corr:true,cf:true}],
+  note:'クローズアップモード（0.3–0.5m）にするとファインダーが傾いて視差を補正。通常モードのまま近寄ると写真の中心が右へずれやすい。'},
+ {id:'mini41',name:'mini 41',f:60,img:[46,62],card:[54,86],off:[4,6.5],b:[-34,38],cov:85,fx:false,
+  modes:[{label:'通常',range:[0.5,99],corr:false,cf:false},{label:'クローズアップ',range:[0.3,0.5],corr:true,cf:true}],
+  note:'クラシック型でファインダーが左上寄り。クローズアップモードで視差補正あり。'},
+ {id:'mini99',name:'mini 99',f:60,img:[46,62],card:[54,86],off:[4,6.5],b:[-34,40],cov:85,fx:true,
+  modes:[{label:'0.3–0.6m',range:[0.3,0.6],corr:false,cf:true},{label:'0.6–3m',range:[0.6,3],corr:false,cf:false},{label:'3m–∞',range:[3,99],corr:false,cf:false}],
+  note:'ピントは3段切替。このシミュレーターでは接写時の視差補正なしとして扱います。明るさ・カラーエフェクト・ビネットを試せます。'},
+ {id:'sq40',name:'SQUARE SQ40',f:65.75,img:[62,62],card:[72,86],off:[5,6.5],b:[-36,42],cov:85,fx:false,
+  modes:[{label:'通常',range:[0.5,99],corr:false,cf:false},{label:'クローズアップ',range:[0.3,0.5],corr:false,cf:true}],
+  note:'正方形フォーマット。このシミュレーターでは接写時の視差補正なしとして扱います。'},
+ {id:'wide400',name:'WIDE 400',f:95,img:[99,62],card:[108,86],off:[4.5,6.5],b:[-48,35],cov:85,fx:false,
+  modes:[{label:'0.9–3m',range:[0.9,3],corr:false,cf:false},{label:'3m–∞',range:[3,99],corr:false,cf:false}],
+  note:'横長のワイド。ボディが大きく、ファインダーとレンズが離れているぶん近距離のズレが大きい。最短0.9m。'}
+];
+const EFFECTS={normal:{label:'ノーマル',css:''},magenta:{label:'ソフトマゼンタ',tint:'#ff7fb0',a:.32,css:'contrast(.95) saturate(.85)'},
+  green:{label:'フェードグリーン',tint:'#7fbf8f',a:.3,css:'contrast(.9) saturate(.75) brightness(1.03)'},warm:{label:'ウォームトーン',tint:'#ffb070',a:.3,css:'saturate(1.05)'},
+  sepia:{label:'セピア',css:'sepia(.85) contrast(1.02)'},blue:{label:'ライトブルー',tint:'#8fc8ff',a:.3,css:''},mono:{label:'モノクロ',css:'grayscale(1) contrast(1.1)'}};
+const VENUES=[{label:'明るい',amb:.95},{label:'普通',amb:.6},{label:'暗いライブハウス',amb:.28}];
+const MODES=[{k:'quiz',label:'出題'},{k:'free',label:'フリー'},{k:'photo',label:'写真'},{k:'live',label:'ライブ'}];
+const DC=0.4; // 補正モードの基準距離(m)
+const TAN_LONG=0.665; // スマホ広角(26mm相当)の長辺半画角tan
+
+/* ---------- 状態 ---------- */
+const S={model:'mini12',focus:0,mode:'quiz',D:0.6,venue:1,bright:0,effect:'normal',vignette:false,guide:false,au:0,av:0,
+  quiz:null,calib:{},photo:null,video:null,stream:null,shot:null,showAns:true};
+try{const s=JSON.parse(localStorage.getItem('cheki-practice-v1')||'{}');if(s.model&&MODELS.find(m=>m.id===s.model))S.model=s.model;if(s.calib)S.calib=s.calib;if(s.venue!=null)S.venue=s.venue;}catch(e){}
+function save(){try{localStorage.setItem('cheki-practice-v1',JSON.stringify({model:S.model,calib:S.calib,venue:S.venue}))}catch(e){}}
+
+const $=id=>document.getElementById(id);
+const M=()=>MODELS.find(m=>m.id===S.model);
+const FM=()=>M().modes[S.focus]||M().modes[0];
+const curD=()=>S.mode==='quiz'&&S.quiz?S.quiz.D:S.D;
+function calib(){const m=M(),c=S.calib[m.id]||{};return{bx:c.bx??m.b[0],by:c.by??m.b[1],cov:(c.cov??m.cov)/100}}
+
+/* 幾何：tan空間（u右, v上）。pu,pv = レンズ画面から見たファインダー中心 */
+function geom(D=curD()){
+  const m=M(),fm=FM(),c=calib();
+  const Lx=m.img[0]/2/m.f, Ly=m.img[1]/2/m.f;
+  const corr=fm.corr?1/DC:0;
+  const pu=(c.bx/1000)*(1/D-corr), pv=(c.by/1000)*(1/D-corr);
+  return{m,fm,Lx,Ly,pu,pv,cov:c.cov,bx:c.bx/1000,by:c.by/1000,corr,D};
+}
+function blurDiop(D,fm){const lo=1/fm.range[1],hi=1/fm.range[0],d=1/D;return d>hi?d-hi:d<lo?lo-d:0}
+function shiftPct(g){return{x:-g.pu/(2*g.Lx)*100,y:-g.pv/(2*g.Ly)*100}}
+function dirTxt(x,y,th){let h=x>th?'右':x<-th?'左':'',v=y>th?'上':y<-th?'下':'';return v&&h?h+v:(h||v)}
+function fmtShift(p){const a=[];if(Math.abs(p.x)>=.1)a.push((p.x>0?'右へ ':'左へ ')+Math.abs(p.x).toFixed(1)+'%');if(Math.abs(p.y)>=.1)a.push((p.y>0?'上へ ':'下へ ')+Math.abs(p.y).toFixed(1)+'%');return a.length?a.join('・'):'ほぼズレなし'}
+
+/* ---------- 色 ---------- */
+const hexCache={};
+function rgb(h){return hexCache[h]||(hexCache[h]=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255))}
+function shade(h,b){const c=rgb(h).map(v=>b<=1?v*b:1-(1-v)/Math.pow(b,1.6));return`rgb(${c.map(v=>Math.round(Math.max(0,Math.min(1,v))*255)).join(',')})`}
+
+/* ---------- 練習シーン ---------- */
+const STARS=Array.from({length:46},(_,i)=>{const r=Math.sin(i*91.7)*43758.5;const r2=Math.sin(i*12.3)*24634.6;return[((r-Math.floor(r))-.5)*8,((r2-Math.floor(r2))*2.6)-1]});
+function drawScene(ctx,W,H,cam,L,t){
+  const k=W/2/cam.hu, D=cam.D, Xp=cam.X+0.012*Math.sin(t*1.3), bob=0.006*Math.sin(t*2.1);
+  const P=(X,Y,Z)=>[W/2+((X-cam.ex)/Z+cam.cu-cam.au)*k, H/2-((Y-cam.ey)/Z+cam.cv-cam.av)*k];
+  const sz=(m,Z)=>m/Z*k;
+  const Zw=D+1.1, Zb=D+0.55;
+  // 壁
+  ctx.fillStyle=shade('#3b3060',L(Zw));ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=shade('#463a70',L(Zw));
+  for(let i=-30;i<=30;i++){const[x]=P(i*0.2,0,Zw);ctx.fillRect(x,0,sz(0.09,Zw),H)}
+  ctx.fillStyle=shade('#f5d76e',L(Zw));
+  for(const[sx,sy]of STARS){const[x,y]=P(sx,sy,Zw),r=sz(0.03,Zw);ctx.beginPath();ctx.moveTo(x,y-r);ctx.lineTo(x+r*.35,y-r*.35);ctx.lineTo(x+r,y);ctx.lineTo(x+r*.35,y+r*.35);ctx.lineTo(x,y+r);ctx.lineTo(x-r*.35,y+r*.35);ctx.lineTo(x-r,y);ctx.lineTo(x-r*.35,y-r*.35);ctx.fill()}
+  {const[x,y]=P(0,0.66,Zw);ctx.font=`700 ${sz(0.15,Zw)}px "Dela Gothic One",sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=shade('#ff9ec4',L(Zw));ctx.fillText('CHEKI ★ TIME',x,y)}
+  {const[,y]=P(0,-1.45,Zw);ctx.fillStyle=shade('#2b2420',L(Zw));ctx.fillRect(0,y,W,H-y)}
+  // 風船
+  const bl=[[0.62,0.42,'#ff9ec4'],[0.8,0.6,'#f4f1ea'],[0.47,0.68,'#b9a6f0']];
+  ctx.strokeStyle=shade('#d8d2c4',L(Zb));ctx.lineWidth=Math.max(1,sz(0.006,Zb));
+  for(const[bx,by]of bl){const a=P(cam.X+bx,by-0.13,Zb),b=P(cam.X+0.64,-0.5,Zb);ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.stroke()}
+  for(const[bx,by,c]of bl){const[x,y]=P(cam.X+bx,by,Zb);ctx.fillStyle=shade(c,L(Zb));ctx.beginPath();ctx.ellipse(x,y,sz(0.12,Zb),sz(0.14,Zb),0,0,Math.PI*2);ctx.fill()}
+  // 人物
+  const Z=D, Lp=L(Z);
+  const poly=(pts,c)=>{ctx.fillStyle=shade(c,Lp);ctx.beginPath();pts.forEach(([X,Y],i)=>{const[x,y]=P(Xp+X,Y+bob,Z);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.closePath();ctx.fill()};
+  const circ=(X,Y,r,c,ry)=>{const[x,y]=P(Xp+X,Y+bob,Z);ctx.fillStyle=shade(c,Lp);ctx.beginPath();ctx.ellipse(x,y,sz(r,Z),sz(ry||r,Z),0,0,Math.PI*2);ctx.fill()};
+  const limb=(pts,w,c)=>{ctx.strokeStyle=shade(c,Lp);ctx.lineWidth=sz(w,Z);ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();pts.forEach(([X,Y],i)=>{const[x,y]=P(Xp+X,Y+bob,Z);i?ctx.lineTo(x,y):ctx.moveTo(x,y)});ctx.stroke()};
+  limb([[-0.07,-0.9],[-0.075,-1.42]],0.07,'#2c2a35');limb([[0.07,-0.9],[0.075,-1.42]],0.07,'#2c2a35');
+  circ(-0.08,-1.43,0.06,'#f4f1ea',0.03);circ(0.08,-1.43,0.06,'#f4f1ea',0.03);
+  limb([[0.19,-0.25],[0.25,-0.45],[0.27,-0.62]],0.06,'#f6d2bd');circ(0.27,-0.64,0.035,'#f6d2bd');
+  poly([[-0.13,-0.5],[0.13,-0.5],[0.31,-0.95],[-0.31,-0.95]],'#ef8db4');
+  poly([[-0.31,-0.92],[0.31,-0.92],[0.32,-0.96],[-0.32,-0.96]],'#fbf5ef');
+  poly([[-0.19,-0.2],[0.19,-0.2],[0.13,-0.52],[-0.13,-0.52]],'#ef8db4');
+  poly([[-0.085,-0.2],[0.085,-0.2],[0,-0.3]],'#fbf5ef');circ(0,-0.27,0.03,'#c43c6c');
+  limb([[-0.19,-0.25],[-0.29,-0.4],[-0.17,-0.06]],0.06,'#f6d2bd');
+  circ(0,-0.13,0.035,'#f6d2bd',0.06);
+  circ(0,0.04,0.128,'#3a2925',0.135);poly([[-0.128,0.03],[0.128,0.03],[0.13,-0.12],[-0.13,-0.12]],'#3a2925');
+  circ(0,0.015,0.086,'#f8dccb',0.1);
+  poly([[-0.1,0.1],[0.1,0.1],[0.095,0.055],[0.03,0.07],[-0.02,0.05],[-0.095,0.06]],'#3a2925');
+  circ(-0.033,0.025,0.011,'#2a1d1a',0.014);circ(0.033,0.025,0.011,'#2a1d1a',0.014);
+  circ(-0.052,-0.01,0.017,'#f3a6a6',0.01);circ(0.052,-0.01,0.017,'#f3a6a6',0.01);
+  {const[x,y]=P(Xp,-0.03+bob,Z);ctx.strokeStyle=shade('#b34a5a',Lp);ctx.lineWidth=Math.max(1,sz(0.006,Z));ctx.beginPath();ctx.arc(x,y-sz(0.012,Z),sz(0.016,Z),0.2*Math.PI,0.8*Math.PI);ctx.stroke()}
+  // ピースの手
+  {const[x,y]=P(Xp-0.17,-0.04+bob,Z);ctx.fillStyle=shade('#f6d2bd',Lp);ctx.beginPath();ctx.ellipse(x,y,sz(0.035,Z),sz(0.035,Z),0,0,7);ctx.fill();
+   ctx.strokeStyle=shade('#f6d2bd',Lp);ctx.lineWidth=sz(0.018,Z);ctx.lineCap='round';
+   for(const dx of[-0.018,0.012]){const[a,b]=P(Xp-0.17+dx*0.6,-0.02+bob,Z),[c,d]=P(Xp-0.17+dx*2.2,0.05+bob,Z);ctx.beginPath();ctx.moveTo(a,b);ctx.lineTo(c,d);ctx.stroke()}}
+}
+
+/* ---------- 写真・ライブ映像の切り出し ---------- */
+function srcInfo(){
+  let el,w,h;
+  if(S.mode==='photo'&&S.photo){el=S.photo;w=el.naturalWidth;h=el.naturalHeight}
+  else if(S.mode==='live'&&S.video&&S.video.readyState>=2){el=S.video;w=el.videoWidth;h=el.videoHeight}
+  else return null;
+  if(!w||!h)return null;
+  const Ux=w>=h?TAN_LONG:TAN_LONG*w/h, Uy=w>=h?TAN_LONG*h/w:TAN_LONG;
+  const g=geom(),s=Math.min(1,Ux/(g.Lx*1.06),Uy/(g.Ly*1.06));
+  return{el,w,h,Ux,Uy,s};
+}
+function drawRegion(ctx,W,H,si,cu,cv,hu,hv){
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+  const mx=u=>(u+si.Ux)/(2*si.Ux)*si.w, my=v=>(si.Uy-v)/(2*si.Uy)*si.h;
+  const sx0=mx(cu-hu),sx1=mx(cu+hu),sy0=my(cv+hv),sy1=my(cv-hv);
+  const ix0=Math.max(0,sx0),ix1=Math.min(si.w,sx1),iy0=Math.max(0,sy0),iy1=Math.min(si.h,sy1);
+  if(ix1<=ix0||iy1<=iy0)return;
+  const dx0=(ix0-sx0)/(sx1-sx0)*W,dx1=(ix1-sx0)/(sx1-sx0)*W,dy0=(iy0-sy0)/(sy1-sy0)*H,dy1=(iy1-sy0)/(sy1-sy0)*H;
+  try{ctx.drawImage(si.el,ix0,iy0,ix1-ix0,iy1-iy0,dx0,dy0,dx1-dx0,dy1-dy0)}catch(e){}
+}
+
+/* ---------- ファインダー描画 ---------- */
+const fc=$('finder'),fctx=fc.getContext('2d');let fW=0,fH=0;
+function layout(){
+  const st=$('stage').getBoundingClientRect(),m=M(),a=m.img[0]/m.img[1];
+  const aw=st.width-60,ah=st.height-150;
+  let w=Math.min(aw,ah*a),h=w/a;
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  fc.style.width=w+'px';fc.style.height=h+'px';fW=Math.round(w*dpr);fH=Math.round(h*dpr);fc.width=fW;fc.height=fH;
+}
+function sceneCam(g,lens,hu,hv){
+  return lens?{ex:0,ey:0,cu:0,cv:0,au:S.au,av:S.av,hu,hv,D:g.D,X:S.quiz&&S.mode==='quiz'?S.quiz.X:0}
+             :{ex:g.bx,ey:g.by,cu:g.corr*g.bx,cv:g.corr*g.by,au:S.au,av:S.av,hu,hv,D:g.D,X:S.quiz&&S.mode==='quiz'?S.quiz.X:0};
+}
+const isScene=()=>S.mode==='quiz'||S.mode==='free';
+function drawFinder(t){
+  if(!fW)return;const g=geom();
+  if(isScene()){
+    const amb=VENUES[S.venue].amb,lf=Math.max(.42,Math.min(1,amb*.9+.2));
+    drawScene(fctx,fW,fH,sceneCam(g,false,g.cov*g.Lx,g.cov*g.Ly),()=>lf,t);
+  }else{
+    const si=srcInfo();
+    if(!si){fctx.fillStyle='#000';fctx.fillRect(0,0,fW,fH)}
+    else drawRegion(fctx,fW,fH,si,S.au+g.pu*si.s,S.av+g.pv*si.s,g.cov*g.Lx*si.s,g.cov*g.Ly*si.s);
+  }
+  if(S.guide){fctx.strokeStyle='rgba(255,255,255,.55)';fctx.lineWidth=Math.max(1,fW/260);const r=fW*.06;fctx.beginPath();fctx.arc(fW/2,fH/2,r,0,7);fctx.stroke();fctx.beginPath();fctx.moveTo(fW/2-r*.4,fH/2);fctx.lineTo(fW/2+r*.4,fH/2);fctx.moveTo(fW/2,fH/2-r*.4);fctx.lineTo(fW/2,fH/2+r*.4);fctx.stroke()}
+}
+let t0=performance.now();
+function loop(now){if($('result').hidden)drawFinder((now-t0)/1000);requestAnimationFrame(loop)}
+
+/* ---------- 撮影 ---------- */
+const pc=$('print'),pctx=pc.getContext('2d'),mc=$('marks'),mctx=mc.getContext('2d');
+let audio=null;
+function sound(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();const a=audio,n=a.currentTime;
+  const buf=a.createBuffer(1,a.sampleRate*.05,a.sampleRate),d=buf.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(1-i/d.length);
+  const s=a.createBufferSource();s.buffer=buf;const g1=a.createGain();g1.gain.value=.35;s.connect(g1).connect(a.destination);s.start(n);
+  const o=a.createOscillator();o.type='sawtooth';o.frequency.value=92;const g2=a.createGain();g2.gain.setValueAtTime(0,n+.15);g2.gain.linearRampToValueAtTime(.04,n+.25);g2.gain.setValueAtTime(.04,n+1.4);g2.gain.linearRampToValueAtTime(0,n+1.6);
+  const lp=a.createBiquadFilter();lp.type='lowpass';lp.frequency.value=600;o.connect(lp).connect(g2).connect(a.destination);o.start(n+.15);o.stop(n+1.7)}catch(e){}}
+
+function shoot(){
+  if(!$('result').hidden)return;
+  if(!isScene()&&!srcInfo()){toast(S.mode==='photo'?'先に写真を選んでください':'カメラ映像がまだ届いていません');return}
+  sound();
+  const g=geom(),m=g.m,fm=g.fm,t=(performance.now()-t0)/1000;
+  const PX=8;pc.width=mc.width=Math.round(m.img[0]*PX);pc.height=mc.height=Math.round(m.img[1]*PX);
+  const W=pc.width,H=pc.height,bm=Math.pow(2,S.bright*.35);
+  let Lsub=1;
+  if(isScene()){
+    const amb=VENUES[S.venue].amb,F=.62*(fm.cf?.2:1);
+    const L=Z=>(amb*.65+F/(Z*Z))*(M().fx?bm:1);Lsub=L(g.D);
+    drawScene(pctx,W,H,sceneCam(g,true,g.Lx,g.Ly),L,t);
+  }else{
+    const si=srcInfo();drawRegion(pctx,W,H,si,S.au,S.av,g.Lx*si.s,g.Ly*si.s);
+  }
+  const ef=M().fx?EFFECTS[S.effect]:EFFECTS.normal;
+  if(ef.tint){pctx.save();pctx.globalCompositeOperation='soft-light';pctx.globalAlpha=ef.a;pctx.fillStyle=ef.tint;pctx.fillRect(0,0,W,H);pctx.restore()}
+  const vg=pctx.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.hypot(W,H)/2);
+  vg.addColorStop(0,'rgba(0,0,0,0)');vg.addColorStop(1,`rgba(0,0,0,${M().fx&&S.vignette?.55:.16})`);pctx.fillStyle=vg;pctx.fillRect(0,0,W,H);
+
+  const bd=blurDiop(g.D,fm);
+  S.shot={g,bd,Lsub,face:isScene()?{u:(S.mode==='quiz'?S.quiz.X:0)/g.D-S.au,v:0.02/g.D-S.av}:null};
+  showResult();
+}
+
+function showResult(){
+  const r=$('result'),st=$('stage').getBoundingClientRect(),m=M(),sh=S.shot,g=sh.g;
+  r.hidden=false;
+  const cw=Math.min(st.width*.66,(st.height*.5)*m.card[0]/m.card[1],330),mm=cw/m.card[0];
+  const card=$('card');card.style.width=cw+'px';card.style.height=m.card[1]*mm+'px';
+  card.style.animation='none';void card.offsetWidth;card.style.animation='';
+  const iw=$('imgwrap');Object.assign(iw.style,{left:m.off[0]*mm+'px',top:m.off[1]*mm+'px',width:m.img[0]*mm+'px',height:m.img[1]*mm+'px'});
+  const ef=m.fx?EFFECTS[S.effect]:EFFECTS.normal;
+  const blur=Math.min(5,sh.bd*2.4)*(m.img[0]*mm/230);
+  pc.style.filter=`contrast(1.06) saturate(.95) ${ef.css||''} ${!isScene()&&m.fx?`brightness(${Math.pow(2,S.bright*.35).toFixed(2)})`:''} ${blur>.15?`blur(${blur.toFixed(2)}px)`:''}`.trim();
+  $('cardtxt').textContent=`${m.name}  ${g.D.toFixed(2)}m`;
+  const dev=$('dev');dev.style.transition='none';dev.style.opacity='1';void dev.offsetWidth;dev.style.transition='';dev.style.opacity='0';
+  drawMarks();mc.style.opacity='0';
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  clearTimeout(showResult.tm);showResult.tm=setTimeout(()=>{mc.style.transition='opacity .4s';mc.style.opacity=S.showAns?'1':'0'},reduce?400:3300);
+  $('toggleAns').textContent=S.showAns?'答え合わせを隠す':'答え合わせを見る';
+  renderVerdict();
+}
+
+function drawMarks(){
+  const W=mc.width,H=mc.height,g=S.shot.g;mctx.clearRect(0,0,W,H);
+  const fx=W/2+g.pu/g.Lx*W/2,fy=H/2-g.pv/g.Ly*H/2,fw=g.cov*W,fh=g.cov*H,lw=Math.max(2,W/150);
+  mctx.save();mctx.lineWidth=lw;mctx.setLineDash([lw*4,lw*3]);mctx.strokeStyle='rgba(255,255,255,.95)';mctx.shadowColor='rgba(0,0,0,.8)';mctx.shadowBlur=lw*2;
+  mctx.strokeRect(fx-fw/2,fy-fh/2,fw,fh);mctx.setLineDash([]);
+  const cr=W*.04;mctx.beginPath();mctx.moveTo(fx-cr,fy);mctx.lineTo(fx+cr,fy);mctx.moveTo(fx,fy-cr);mctx.lineTo(fx,fy+cr);mctx.stroke();
+  mctx.strokeStyle='#f2a33a';mctx.beginPath();mctx.arc(W/2,H/2,cr*.6,0,7);mctx.stroke();
+  if(Math.hypot(W/2-fx,H/2-fy)>cr*.8){mctx.beginPath();mctx.moveTo(fx,fy);mctx.lineTo(W/2,H/2);mctx.stroke();
+    const a=Math.atan2(H/2-fy,W/2-fx),h=cr*.7;mctx.beginPath();mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a-.5),H/2-h*Math.sin(a-.5));mctx.moveTo(W/2,H/2);mctx.lineTo(W/2-h*Math.cos(a+.5),H/2-h*Math.sin(a+.5));mctx.stroke()}
+  mctx.font=`700 ${W*.05}px "Zen Kaku Gothic New",sans-serif`;mctx.fillStyle='#fff';mctx.textBaseline='top';
+  mctx.fillText('点線＝ファインダーで見えていた範囲',W*.04,H*.03);
+  mctx.restore();
+}
+
+function renderVerdict(){
+  const sh=S.shot,g=sh.g,v=$('verdict'),sp=shiftPct(g),fm=g.fm,m=g.m;
+  const items=[];let html='';
+  if(sh.face){
+    const nx=sh.face.u/g.Lx,ny=sh.face.v/g.Ly,dist=Math.hypot(nx,ny);
+    let score=100*Math.max(0,1-dist*1.6);
+    if(dist>.14){const now=dirTxt(nx,ny,.05),fix=dirTxt(-nx,-ny,.05);items.push({bad:true,t:`顔が写真の${now}寄りに写りました。ファインダーでは顔を少し${fix||'中央'}に置いて構えると真ん中に来ます。`})}
+    else items.push({t:'顔はほぼ真ん中。ズレの読みが合っています。'});
+    if(sh.bd>.25){score-=15;const ok=m.modes.find(x=>g.D>=x.range[0]&&g.D<=x.range[1]);items.push({bad:true,t:`ピントが外れています（${fm.label}の範囲外）。${ok?`この距離なら「${ok.label}」。`:''}`})}
+    if(sh.Lsub>1.45){score-=15;const cf=m.modes.find(x=>x.cf&&g.D>=x.range[0]-.05&&g.D<=x.range[1]+.05);items.push({bad:true,t:`フラッシュが強すぎて白飛び気味。${cf&&!fm.cf?`接写設定（${cf.label}）だと光量が抑えられます。`:''}`})}
+    else if(sh.Lsub<.5){score-=10;items.push({bad:true,t:'暗めの仕上がり。フラッシュが届く距離まで近づくと明るくなります。'})}
+    if(fm.corr&&g.D>.7)items.push({bad:true,t:'補正モードのまま離れると、今度は逆方向にズレます。'});
+    score=Math.max(0,Math.round(score));
+    const lbl=score>=90?'ど真ん中':score>=75?'いい感じ':score>=50?'惜しい':'ズレてる';
+    html+=`<div class="score"><span class="num">${score}</span><span class="lbl">${lbl}</span><span style="color:var(--dim);font-size:13px">距離 ${g.D.toFixed(2)}m・${fm.label}</span></div>`;
+  }else{
+    if(sh.bd>.25)items.push({bad:true,t:`この距離（${g.D.toFixed(2)}m）は「${fm.label}」のピント範囲外。ボケて写ります。`});
+    if(fm.corr&&g.D>.7)items.push({bad:true,t:'補正モードのまま離れると逆方向にズレます。'});
+    items.push({t:'点線がファインダーで見えていた範囲。実際の写りとの差を確認しよう。'});
+  }
+  html+=`<div class="shift">写真の中心はファインダーより ${fmtShift(sp)}</div>`;
+  html+=`<ul class="advice">${items.map(i=>`<li class="${i.bad?'bad':''}">${i.t}</li>`).join('')}</ul>`;
+  v.innerHTML=html;
+}
+
+/* ---------- 出題 ---------- */
+function newQuiz(){
+  const m=M(),minR=Math.max(.3,Math.min(...m.modes.map(x=>x.range[0]))*.85),maxR=m.id==='wide400'?3:2.4;
+  const D=Math.exp(Math.log(minR)+Math.random()*(Math.log(maxR)-Math.log(minR)));
+  S.quiz={D,X:(Math.random()-.5)*.3*Math.min(D,1.2)};S.au=0;S.av=0;
+}
+
+/* ---------- UI ---------- */
+function seg(el,opts,cur,on){el.innerHTML='';opts.forEach((o,i)=>{const b=document.createElement('button');b.type='button';b.textContent=o.label;b.setAttribute('aria-pressed',String(i===cur));b.onclick=()=>on(i);el.appendChild(b)})}
+function renderModels(){const el=$('models');el.innerHTML='';MODELS.forEach(m=>{const b=document.createElement('button');b.className='chip';b.type='button';b.textContent=m.name;b.setAttribute('aria-pressed',String(m.id===S.model));
+  b.onclick=()=>{S.model=m.id;S.focus=0;S.au=S.av=0;if(S.mode==='quiz')newQuiz();save();renderAll();layout()};el.appendChild(b)})}
+function renderAll(){
+  renderModels();const m=M();
+  seg($('modeSeg'),MODES,MODES.findIndex(x=>x.k===S.mode),i=>setMode(MODES[i].k));
+  seg($('focusSeg'),m.modes,S.focus,i=>{S.focus=i;renderAll()});
+  seg($('venueSeg'),VENUES,S.venue,i=>{S.venue=i;save();renderAll()});
+  $('venueRow').hidden=!isScene();$('fxRow').hidden=!m.fx;
+  const quiz=S.mode==='quiz';$('dist').disabled=quiz;$('dist').value=S.D;
+  $('distVal').textContent=quiz?'？（目測で判断）':S.D.toFixed(2)+' m';
+  $('distBadge').textContent=quiz?'距離 ？':S.D.toFixed(2)+' m';
+  $('modelNote').textContent=m.note;
+  $('photoEmpty').hidden=!(S.mode==='photo'&&!S.photo);
+  const hints={quiz:'<span><b>お題</b> 顔を写真の真ん中に</span><span>ドラッグで構図</span>',free:'<span><b>フリー</b> 距離を変えてズレを観察</span><span>ドラッグで構図</span>',
+    photo:`<span><b>写真</b> 主役までの距離を設定</span><span>${S.photo?'<u style="pointer-events:auto;cursor:pointer" id="rePick">写真を変える</u>':''}</span>`,live:'<span><b>ライブ</b> スマホを構えて狙う</span><span></span>'};
+  $('hint').innerHTML=hints[S.mode];const rp=$('rePick');if(rp)rp.onclick=()=>$('photoInput').click();
+  const c=calib();$('calX').value=c.bx;$('calY').value=c.by;$('calC').value=Math.round(c.cov*100);
+  $('calXv').textContent=(c.bx<0?'左 ':'右 ')+Math.abs(c.bx)+'mm';$('calYv').textContent=(c.by>=0?'上 ':'下 ')+Math.abs(c.by)+'mm';$('calCv').textContent=Math.round(c.cov*100)+'%';
+  const ef=$('effect');if(!ef.options.length)Object.entries(EFFECTS).forEach(([k,v])=>{const o=document.createElement('option');o.value=k;o.textContent=v.label;ef.appendChild(o)});ef.value=S.effect;
+  $('vignette').checked=S.vignette;$('guide').checked=S.guide;$('bright').value=S.bright;$('brightVal').textContent=(S.bright>0?'+':S.bright<0?'−':'±')+Math.abs(S.bright);
+  renderTable();
+}
+function renderTable(){
+  const m=M(),fm=FM(),rows=[0.3,0.4,0.5,0.7,1,1.5,2,3].filter(d=>d>=Math.min(...m.modes.map(x=>x.range[0]))*.6);
+  let h=`<tr><th>距離</th><th>横</th><th>縦</th><th>（${fm.label}）</th></tr>`;
+  for(const d of rows){const g=geom(d),p=shiftPct(g),of=blurDiop(d,fm)>.25;
+    const f=(x,a,b)=>Math.abs(x)<.1?'—':(x>0?a:b)+' '+Math.abs(x).toFixed(1)+'%';
+    h+=`<tr><td class="m">${d.toFixed(1)}m</td><td class="m">${f(p.x,'右','左')}</td><td class="m">${f(p.y,'上','下')}</td><td>${of?'<span class="of">ピント外</span>':''}</td></tr>`}
+  $('shiftTable').innerHTML=h;
+}
+async function setMode(k){
+  if(S.mode==='live'&&k!=='live')stopLive();
+  S.mode=k;S.au=S.av=0;$('result').hidden=true;
+  if(k==='quiz')newQuiz();
+  renderAll();
+  if(k==='live')startLive();
+}
+async function startLive(){
+  try{
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nomedia');
+    const st=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1440},height:{ideal:1080}},audio:false});
+    if(S.mode!=='live'){st.getTracks().forEach(t=>t.stop());return}
+    const v=document.createElement('video');v.playsInline=true;v.muted=true;v.setAttribute('playsinline','');v.srcObject=st;await v.play();
+    S.stream=st;S.video=v;
+  }catch(e){toast('この表示環境ではカメラを使えません。「写真」モードで、撮った写真を覗いて練習できます。');setMode('photo')}
+}
+function stopLive(){if(S.stream)S.stream.getTracks().forEach(t=>t.stop());S.stream=null;S.video=null}
+let tt;function toast(msg){let el=document.querySelector('.toast');if(!el){el=document.createElement('div');el.className='toast';el.setAttribute('role','status');document.body.appendChild(el)}el.textContent=msg;el.hidden=false;clearTimeout(tt);tt=setTimeout(()=>el.hidden=true,4200)}
+
+/* 操作 */
+$('dist').oninput=e=>{S.D=+e.target.value;renderAll()};
+$('bright').oninput=e=>{S.bright=+e.target.value;renderAll()};
+$('effect').onchange=e=>{S.effect=e.target.value};
+$('vignette').onchange=e=>{S.vignette=e.target.checked};
+$('guide').onchange=e=>{S.guide=e.target.checked};
+const setCal=(key,val)=>{const m=M();S.calib[m.id]=Object.assign({},S.calib[m.id],{[key]:val});save();renderAll()};
+$('calX').oninput=e=>setCal('bx',+e.target.value);$('calY').oninput=e=>setCal('by',+e.target.value);$('calC').oninput=e=>setCal('cov',+e.target.value);
+$('calReset').onclick=()=>{delete S.calib[M().id];save();renderAll()};
+$('shutter').onclick=shoot;
+$('again').onclick=()=>{$('result').hidden=true;if(S.mode==='quiz')newQuiz();renderAll()};
+$('toggleAns').onclick=()=>{S.showAns=!S.showAns;mc.style.opacity=S.showAns?'1':'0';$('toggleAns').textContent=S.showAns?'答え合わせを隠す':'答え合わせを見る'};
+$('pickPhoto').onclick=()=>$('photoInput').click();
+$('photoInput').onchange=e=>{const f=e.target.files&&e.target.files[0];if(!f)return;const img=new Image();img.onload=()=>{S.photo=img;S.au=S.av=0;renderAll()};img.onerror=()=>toast('この画像は読み込めませんでした。JPEGかPNGで試してください。');img.src=URL.createObjectURL(f);e.target.value=''};
+// ドラッグで構図
+let drag=null;const stage=$('stage');
+stage.addEventListener('pointerdown',e=>{if(!$('result').hidden||S.mode==='live'||e.target.closest('button'))return;drag={x:e.clientX,y:e.clientY};stage.setPointerCapture(e.pointerId)});
+stage.addEventListener('pointermove',e=>{if(!drag)return;const g=geom(),r=fc.getBoundingClientRect();let s=1;if(S.mode==='photo'){const si=srcInfo();if(!si)return;s=si.s}
+  const hu=g.cov*g.Lx*s,hv=g.cov*g.Ly*s;S.au-=(e.clientX-drag.x)/(r.width/2)*hu;S.av+=(e.clientY-drag.y)/(r.height/2)*hv;drag={x:e.clientX,y:e.clientY};
+  const lim=S.mode==='photo'?(()=>{const si=srcInfo();return[Math.max(0,si.Ux-g.Lx*s),Math.max(0,si.Uy-g.Ly*s)]})():[.5,.4];
+  S.au=Math.max(-lim[0],Math.min(lim[0],S.au));S.av=Math.max(-lim[1],Math.min(lim[1],S.av))});
+const endDrag=()=>{drag=null};stage.addEventListener('pointerup',endDrag);stage.addEventListener('pointercancel',endDrag);
+window.addEventListener('resize',layout);
+document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target===document.body){e.preventDefault();$('result').hidden?shoot():$('again').click()}});
+
+newQuiz();renderAll();layout();requestAnimationFrame(loop);
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(layout);
+window.__cheki={geom,shiftPct,S,MODELS,FM,M};
+})();
+</script>
+
+</body>
+</html>
