@@ -209,7 +209,7 @@ function geom(D=curD()){
   return{m,fm,Lx,Ly,pu,pv,cov:c.cov,bx:c.bx/1000,by:c.by/1000,corr,D};
 }
 /* 構図：人物の高さ（m、カメラ高=0）と写り方の分類 */
-const BODY={top:0.214,face:0.02,knee:-1.15,feet:-1.47};
+const BODY={top:0.218,face:0.02,knee:-1.15,feet:-1.47};
 const FRAMES=[
  {k:'face',label:'顔アップ',minY:-0.22,hr:[0.01,0.06],task:'頭上の余白は少なめ'},
  {k:'bust',label:'バストアップ',minY:-0.42,hr:[0.02,0.08],task:'頭上の余白は少なめ・顔は上寄り'},
@@ -230,7 +230,7 @@ function shade(h,b){const c=rgb(h).map(v=>b<=1?v*b:1-(1-v)/Math.pow(b,1.6));retu
 
 /* ---------- 練習シーン（アニメ調） ---------- */
 const FEET=1.47;
-const KIND={idol:{top:0.214,eye:0.002,head:0.12},fan:{top:0.205,eye:0.012,head:0.105}};
+const KIND={idol:{top:0.218,eye:0.006,head:0.115},fan:{top:0.19,eye:-0.006,head:0.1}};
 function isPair(){return S.mode==='quiz'?!!(S.quiz&&S.quiz.pair):S.shotType==='two'}
 function subjectsAt(t){
   const X0=S.mode==='quiz'&&S.quiz?S.quiz.X:0;
@@ -243,211 +243,233 @@ const mkC=Lv=>hex=>shade(hex,Lv);
 /* ---------- 人物イラスト（SVGで描いて高解像度のスプライトに焼き込む。単位mm・原点＝人物中心のカメラ高さ・y下向き） ---------- */
 function mir(d){let i=0;return d.replace(/-?\d*\.?\d+/g,m=>(i++%2===0)?String(-parseFloat(m)):m)}
 const f1=n=>(+n).toFixed(1);
-function limbD(a,b,ra,rb,bul=0.1){
-  const dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy),ux=dx/Ln,uy=dy/Ln,px=-uy,py=ux,rm=Math.max(ra,rb)*(1+bul),k=1.33;
-  const A1=[a[0]+px*ra,a[1]+py*ra],B1=[b[0]+px*rb,b[1]+py*rb],B2=[b[0]-px*rb,b[1]-py*rb],A2=[a[0]-px*ra,a[1]-py*ra];
-  const c1=[a[0]+ux*Ln*.33+px*rm,a[1]+uy*Ln*.33+py*rm],c2=[b[0]-ux*Ln*.33+px*rb*1.04,b[1]-uy*Ln*.33+py*rb*1.04];
-  const c3=[b[0]-ux*Ln*.33-px*rb*1.04,b[1]-uy*Ln*.33-py*rb*1.04],c4=[a[0]+ux*Ln*.33-px*rm,a[1]+uy*Ln*.33-py*rm];
-  const P=p=>f1(p[0])+','+f1(p[1]);
-  return `M${P(A1)} C${P(c1)} ${P(c2)} ${P(B1)} C${P([B1[0]+ux*rb*k,B1[1]+uy*rb*k])} ${P([B2[0]+ux*rb*k,B2[1]+uy*rb*k])} ${P(B2)} C${P(c3)} ${P(c4)} ${P(A2)} C${P([A2[0]-ux*ra*k,A2[1]-uy*ra*k])} ${P([A1[0]-ux*ra*k,A1[1]-uy*ra*k])} ${P(A1)} Z`;
-}
 let GID=0;
-function limbSVG(a,b,ra,rb,base,shd,OL,bul){
-  const d=limbD(a,b,ra,rb,bul),dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy);let px=-dy/Ln,py=dx/Ln;if(px<0){px=-px;py=-py}
-  const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],r=Math.max(ra,rb)*1.15,id='lg'+(GID++);
-  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(m[0]-px*r)}" y1="${f1(m[1]-py*r)}" x2="${f1(m[0]+px*r)}" y2="${f1(m[1]+py*r)}"><stop offset="0" stop-color="${base}"/><stop offset=".58" stop-color="${base}"/><stop offset=".62" stop-color="${shd}"/><stop offset="1" stop-color="${shd}"/></linearGradient><path d="${d}" fill="url(#${id})" stroke="${OL}" stroke-width="2.2" stroke-linejoin="round"/>`;
-}
-function armSVG(segs,base,shd,OL){ // 複数の部位を1つのシルエットとして描く（外側だけに線）
-  let g='',o='',f='';for(const[a,b,ra,rb]of segs){const d=limbD(a,b,ra,rb,.12),dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy);let px=-dy/Ln,py=dx/Ln;if(px<0){px=-px;py=-py}
-    const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],r=Math.max(ra,rb)*1.15,id='lg'+(GID++);
-    g+=`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(m[0]-px*r)}" y1="${f1(m[1]-py*r)}" x2="${f1(m[0]+px*r)}" y2="${f1(m[1]+py*r)}"><stop offset="0" stop-color="${base}"/><stop offset=".58" stop-color="${base}"/><stop offset=".62" stop-color="${shd}"/><stop offset="1" stop-color="${shd}"/></linearGradient>`;
-    o+=`<path d="${d}" fill="${OL}" stroke="${OL}" stroke-width="4.4" stroke-linejoin="round"/>`;f+=`<path d="${d}" fill="url(#${id})"/>`}
-  const j=segs[0][1],a=segs[0][0],c=segs[1][1];const v1=[a[0]-j[0],a[1]-j[1]],v2=[c[0]-j[0],c[1]-j[1]],n1=Math.hypot(...v1),n2=Math.hypot(...v2),bx=v1[0]/n1+v2[0]/n2,by=v1[1]/n1+v2[1]/n2,bn=Math.hypot(bx,by)||1,r=segs[0][3]*0.75;
-  const cx=j[0]+bx/bn*r,cy=j[1]+by/bn*r;
-  return g+o+f+ln(`M ${f1(cx-by/bn*6)},${f1(cy+bx/bn*6)} Q ${f1(cx+bx/bn*3)},${f1(cy+by/bn*3)} ${f1(cx+by/bn*6)},${f1(cy-bx/bn*6)}`,shd,1.6,.9);
-}
-const pth=(d,fill,OL,sw=2.2,extra='')=>`<path d="${d}" fill="${fill}"${OL?` stroke="${OL}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`:''} ${extra}/>`;
+const pth=(d,fill,OL,sw=2,extra='')=>`<path d="${d}" fill="${fill}"${OL?` stroke="${OL}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`:''} ${extra}/>`;
 const both=(d,fill,OL,sw,extra)=>pth(d,fill,OL,sw,extra)+pth(mir(d),fill,OL,sw,extra);
 const ln=(d,col,sw,op=1)=>`<path d="${d}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+/* なめらかな閉曲線（Catmull-Rom） */
+function crClosed(P){const n=P.length;let d=`M${f1(P[0][0])},${f1(P[0][1])}`;
+  for(let i=0;i<n;i++){const p0=P[(i-1+n)%n],p1=P[i],p2=P[(i+1)%n],p3=P[(i+2)%n];
+    d+=` C${f1(p1[0]+(p2[0]-p0[0])/6)},${f1(p1[1]+(p2[1]-p0[1])/6)} ${f1(p2[0]-(p3[0]-p1[0])/6)},${f1(p2[1]-(p3[1]-p1[1])/6)} ${f1(p2[0])},${f1(p2[1])}`}return d+' Z'}
+/* 腕・指などの部位：付け根A→先端B、太さ[rA,rMid,rB]、左右の膨らみ[bL,bR] */
+function segD(A,B,r,bul=[0,0],capA=0.95,capB=0.95){
+  const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy),u=[dx/L,dy/L],n=[-u[1],u[0]];
+  const P=t=>[A[0]+dx*t,A[1]+dy*t],off=(p,s,k)=>[p[0]+n[0]*s*k,p[1]+n[1]*s*k];
+  const rm=r[1],r7=(r[1]+r[2])/2;
+  return crClosed([off(A,1,r[0]),off(P(.33),1,rm*(1+bul[0])),off(P(.7),1,r7),off(B,1,r[2]),[B[0]+u[0]*r[2]*capB,B[1]+u[1]*r[2]*capB],
+    off(B,-1,r[2]),off(P(.7),-1,r7),off(P(.33),-1,rm*(1+bul[1])),off(A,-1,r[0]),[A[0]-u[0]*r[0]*capA,A[1]-u[1]*r[0]*capA]]);
+}
+function celGrad(A,B,r,base,shd,light){ // 左上光源のアニメ塗り（影は右側）
+  const dx=B[0]-A[0],dy=B[1]-A[1],L=Math.hypot(dx,dy);let px=-dy/L,py=dx/L;if(px<0){px=-px;py=-py}
+  const m=[(A[0]+B[0])/2,(A[1]+B[1])/2],id='cg'+(GID++);
+  return{id,def:`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(m[0]-px*r)}" y1="${f1(m[1]-py*r)}" x2="${f1(m[0]+px*r)}" y2="${f1(m[1]+py*r)}"><stop offset="0" stop-color="${light||base}"/><stop offset=".18" stop-color="${base}"/><stop offset=".6" stop-color="${base}"/><stop offset=".64" stop-color="${shd}"/><stop offset="1" stop-color="${shd}"/></linearGradient>`};
+}
+function partSVG(A,B,r,bul,C,merge){const d=segD(A,B,r,bul),g=celGrad(A,B,Math.max(...r)*1.1,C.base,C.shd,C.light);
+  return merge?{o:`<path d="${d}" fill="${C.OL}" stroke="${C.OL}" stroke-width="${C.sw*2}" stroke-linejoin="round"/>`,f:g.def+`<path d="${d}" fill="url(#${g.id})"/>`}:g.def+`<path d="${d}" fill="url(#${g.id})" stroke="${C.OL}" stroke-width="${C.sw}" stroke-linejoin="round"/>`}
+function merged(parts){return parts.map(p=>p.o).join('')+parts.map(p=>p.f).join('')}
+function finger(A,B,w0,w1,C){return partSVG(A,B,[w0/2,(w0+w1)/4*1.03,w1/2],[.04,.04],C)+`<ellipse cx="${f1(B[0]+(A[0]-B[0])*0.1)}" cy="${f1(B[1]+(A[1]-B[1])*0.1)}" rx="${f1(w1*0.26)}" ry="${f1(w1*0.2)}" fill="#fff" opacity=".55"/>`}
+function heartHalf(C){const S=C.base,SS=C.shd,O=C.OL;
+  return pth('M 146,168 C 132,142 86,136 76,178 C 72,198 66,212 58,226 L 72,250 C 94,256 122,266 146,274 C 152,266 150,256 145,250 C 124,234 100,216 100,192 C 100,166 130,162 144,184 C 151,178 151,172 146,168 Z',S,O,C.sw)+
+    pth('M 76,178 C 72,198 66,212 58,226 L 72,250 C 82,248 88,232 90,214 C 92,198 86,184 76,178 Z',SS,null,0,'opacity=".85"')+pth('M 128,258 C 136,262 142,266 146,272 C 150,266 149,258 145,251 Z',SS,null,0,'opacity=".7"')+
+    ln('M 102,150 C 106,158 108,164 106,172',SS,1.5)+ln('M 120,145 C 124,153 125,160 124,168',SS,1.5)+ln('M 88,160 C 94,166 96,174 96,180',SS,1.5)+ln('M 94,238 C 106,242 120,248 132,256',SS,1.5)+
+    `<ellipse cx="139" cy="168" rx="4.5" ry="3.2" fill="#fff" opacity=".55"/><ellipse cx="141" cy="266" rx="4.5" ry="3" fill="#fff" opacity=".55"/>`}
 
-function eyeIdol(cx,cy,sd){
-  const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#3a1a26';
-  return `<g transform="${T}"><g clip-path="url(#ecI)">
-  <path d="M -24,4 C -19,-22 13,-31 26,-12 C 29,6 22,25 8,29 C -6,31 -20,22 -24,4 Z" fill="#fffdfb"/>
-  <ellipse cx="2" cy="4" rx="17" ry="25" fill="url(#irisI)"/>
-  <ellipse cx="2" cy="-21" rx="28" ry="12" fill="#3a1446" opacity=".35"/>
-  <ellipse cx="2" cy="2" rx="7.5" ry="11.5" fill="#2a0b33"/>
-  <ellipse cx="2" cy="19" rx="12" ry="7" fill="#ffe3f5" opacity=".5"/>
-  <ellipse cx="2" cy="4" rx="17" ry="25" fill="none" stroke="#3a1446" stroke-width="1.4"/>
-  <ellipse cx="-6" cy="-9" rx="7.5" ry="6" transform="rotate(-20 -6 -9)" fill="#fff"/>
-  <circle cx="10" cy="16" r="3.4" fill="#fff"/><circle cx="-1" cy="22" r="1.8" fill="#fff"/>
-  <path d="M 11,-17 Q 11,-12 16,-12 Q 11,-12 11,-7 Q 11,-12 6,-12 Q 11,-12 11,-17 Z" fill="#fff"/>
+/* ===== アイドル（ミルクティー色ロング・ラベンダー×白のチェック衣装） ===== */
+function idolEye(cx,cy,sd){const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#4a2418';
+  return `<g transform="${T}"><g clip-path="url(#eyeA)">
+  <path d="M -23,0 C -18,-24 14,-30 25,-10 C 28,6 24,24 10,28 C -4,30 -18,20 -23,0 Z" fill="#fffdfa"/>
+  <ellipse cx="2" cy="3" rx="17.5" ry="24" fill="url(#irisA)"/>
+  <ellipse cx="2" cy="-19" rx="28" ry="13" fill="#4a2010" opacity=".38"/>
+  <ellipse cx="2" cy="2" rx="8" ry="11" fill="#3a1608"/>
+  <path d="M -10,14 C -4,22 8,22 14,14 C 8,18 -4,18 -10,14 Z" fill="#ffe7a8" opacity=".9"/>
+  <ellipse cx="2" cy="3" rx="17.5" ry="24" fill="none" stroke="#4a2010" stroke-width="1.2"/>
+  <ellipse cx="-6" cy="-8" rx="8" ry="6.4" transform="rotate(-25 -6 -8)" fill="#fff"/>
+  <circle cx="10" cy="15" r="3.6" fill="#fff"/><circle cx="12" cy="-12" r="2.2" fill="#fff"/><circle cx="-2" cy="20" r="1.6" fill="#ffd6e6"/>
   </g>
-  <path d="M -27,7 C -21,-26 14,-36 30,-14 L 37,-21 L 33,-9 C 18,-30 -16,-24 -22,8 Z" fill="${lc}"/>
-  <path d="M 20,-25 L 31,-35 L 25,-20 Z" fill="${lc}"/><path d="M 26,-18 L 38,-26 L 30,-13 Z" fill="${lc}"/>
-  ${ln('M -18,-23 C -6,-35 16,-35 27,-25',lc,1.5,.45)}
-  ${ln('M 24,14 C 18,26 2,32 -12,26',lc,1.6,.5)}${ln('M 24,14 L 28,19',lc,1.4,.5)}
-  </g>`;
-}
-function eyeFan(cx,cy,sd){
-  const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#2a1d22';
-  return `<g transform="${T}"><g clip-path="url(#ecF)">
-  <path d="M -22,2 C -16,-16 12,-22 22,-8 C 23,6 16,16 4,18 C -8,19 -19,12 -22,2 Z" fill="#fffdfb"/>
-  <ellipse cx="1" cy="1" rx="12.5" ry="16" fill="url(#irisF)"/>
-  <ellipse cx="1" cy="-15" rx="24" ry="9" fill="#24170f" opacity=".35"/>
-  <ellipse cx="1" cy="-1" rx="5.2" ry="7.5" fill="#1c120d"/>
-  <ellipse cx="-4" cy="-6" rx="4.6" ry="3.8" fill="#fff"/><circle cx="6" cy="8" r="2" fill="#fff"/>
-  </g>
-  <path d="M -25,4 C -18,-21 14,-27 26,-8 L 23,-3 C 12,-19 -14,-15 -20,6 Z" fill="${lc}"/>
-  ${ln('M 20,10 C 12,17 0,20 -10,16',lc,1.3,.4)}
-  </g>`;
-}
+  <path d="M -26,5 C -21,-28 18,-35 30,-6 C 31,-2 32,3 33,7 C 27,-2 24,-6 20,-12 C 6,-28 -14,-22 -21,7 Z" fill="${lc}"/>
+  <path d="M -24,-6 L -32,-12 L -22,-2 Z" fill="${lc}"/>
+  ${ln('M -16,-25 C -4,-36 16,-35 26,-24',lc,1.4,.42)}
+  ${ln('M 25,12 C 20,24 6,30 -10,26',lc,1.5,.45)}${ln('M 18,22 L 21,27 M 10,26 L 12,31',lc,1.2,.45)}
+  </g>`}
 function idolSVG(pose){
-  const OL='#7a4650',SK='#fde6d9',SKS='#f3c3b0',H1='#94543a',H2='#6c3a27',H3='#48241a',HH='#e0a27a',PK='#ff9fc8',PKS='#ea78ab',PKD='#c95c8e',WT='#fffbf8',WTS='#e8d8ea',RD='#f0538b',RDS='#c2366a',SH='#e04a87';
   GID=0;
+  const OL='#8a5560',SK='#ffe8dc',SKS='#f4c3b1',SKL='#fff5ef',HO='#7a5038',H0='#e9c39d',H1='#cfa27a',H2='#a87a55',H3='#84593b',HL='#fff0da',
+        LV='#b9a2e8',LVS='#9479cc',LVD='#7458ae',LVL='#d8cbf6',WT='#fffdfb',WTS='#e3ddf0',GD='#e8c060',BT='#fbfaff',BTS='#d9d3ea';
+  const C={base:SK,shd:SKS,light:SKL,OL,sw:2};
   const defs=`<defs>
-  <linearGradient id="hairG" x1="0" y1="-215" x2="0" y2="580" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H1}"/><stop offset=".3" stop-color="${H2}"/><stop offset="1" stop-color="${H3}"/></linearGradient>
-  <linearGradient id="bangG" x1="0" y1="-200" x2="0" y2="-10" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H1}"/><stop offset=".65" stop-color="${H2}"/><stop offset="1" stop-color="#53291c"/></linearGradient>
-  <radialGradient id="blushG"><stop offset="0" stop-color="#ff7aa6" stop-opacity=".62"/><stop offset="1" stop-color="#ff7aa6" stop-opacity="0"/></radialGradient>
-  <linearGradient id="irisI" x1="0" y1="-21" x2="0" y2="29" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2c0e38"/><stop offset=".4" stop-color="#8a3d93"/><stop offset=".8" stop-color="#f18ac8"/><stop offset="1" stop-color="#ffd8ef"/></linearGradient>
-  <linearGradient id="skirtG" x1="0" y1="490" x2="0" y2="930" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffa9cf"/><stop offset="1" stop-color="#ff8cbd"/></linearGradient>
-  <linearGradient id="bodG" x1="0" y1="160" x2="0" y2="500" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb0d3"/><stop offset="1" stop-color="${PK}"/></linearGradient>
-  <clipPath id="ecI"><path d="M -24,4 C -19,-22 13,-31 26,-12 C 29,6 22,25 8,29 C -6,31 -20,22 -24,4 Z"/></clipPath>
-  <clipPath id="cSkirt"><path id="pSkirt" d="M -115,492 C -170,580 -262,760 -336,880 Q -305,915 -270,898 Q -240,925 -205,905 Q -170,930 -135,910 Q -100,932 -68,912 Q -35,934 0,914 Q 35,934 68,912 Q 100,932 135,910 Q 170,930 205,905 Q 240,925 270,898 Q 305,915 336,880 C 262,760 170,580 115,492 Z"/></clipPath>
-  <clipPath id="cBod"><path d="M -40,160 C -80,162 -130,170 -150,190 C -158,240 -150,300 -132,350 C -122,400 -118,450 -112,490 L 112,490 C 118,450 122,400 132,350 C 150,300 158,240 150,190 C 130,170 80,162 40,160 Z"/></clipPath>
-  <clipPath id="cLegL"><path d="M -104,890 C -100,990 -97,1080 -93,1150 C -97,1210 -98,1270 -88,1330 C -84,1358 -82,1384 -80,1402 L -44,1402 C -43,1372 -40,1332 -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z"/></clipPath>
-  <clipPath id="cFace"><path d="M -78,-60 C -80,10 -66,50 -38,70 C -22,80 -10,84 0,84 C 10,84 22,80 38,70 C 66,50 80,10 78,-60 C 74,-150 -74,-150 -78,-60 Z"/></clipPath>
-  <clipPath id="cBang"><path id="pBang" d="M -96,40 C -112,-110 -70,-196 0,-196 C 70,-196 112,-110 96,40 L 84,-6 Q 80,-30 72,-52 Q 66,-40 60,-30 Q 56,-56 46,-74 Q 40,-56 34,-46 Q 26,-66 16,-80 Q 10,-62 4,-54 Q -4,-70 -14,-82 Q -20,-62 -26,-52 Q -34,-70 -46,-76 Q -50,-56 -56,-42 Q -62,-58 -72,-60 Q -76,-34 -84,-6 Z"/></clipPath>
+  <linearGradient id="hairA" x1="0" y1="-220" x2="0" y2="520" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H0}"/><stop offset=".25" stop-color="${H1}"/><stop offset=".75" stop-color="${H2}"/><stop offset="1" stop-color="${H1}"/></linearGradient>
+  <linearGradient id="hairF" x1="0" y1="-205" x2="0" y2="-20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H0}"/><stop offset=".6" stop-color="${H1}"/><stop offset="1" stop-color="${H2}"/></linearGradient>
+  <linearGradient id="lockA" x1="0" y1="-80" x2="0" y2="340" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H1}"/><stop offset=".7" stop-color="${H1}"/><stop offset="1" stop-color="${H0}"/></linearGradient>
+  <linearGradient id="irisA" x1="0" y1="-21" x2="0" y2="27" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4a1d0c"/><stop offset=".45" stop-color="#b8682a"/><stop offset=".85" stop-color="#f6b65a"/><stop offset="1" stop-color="#ffe29a"/></linearGradient>
+  <radialGradient id="blushA"><stop offset="0" stop-color="#ff8aa8" stop-opacity=".6"/><stop offset="1" stop-color="#ff8aa8" stop-opacity="0"/></radialGradient>
+  <pattern id="ging" width="26" height="26" patternUnits="userSpaceOnUse"><rect width="26" height="26" fill="${LV}"/><rect width="13" height="26" fill="#fff" opacity=".38"/><rect width="26" height="13" fill="#fff" opacity=".38"/></pattern>
+  <linearGradient id="bootA" x1="0" y1="1220" x2="0" y2="1470" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${BT}"/><stop offset="1" stop-color="#eeeaf7"/></linearGradient>
+  <clipPath id="eyeA"><path d="M -23,0 C -18,-24 14,-30 25,-10 C 28,6 24,24 10,28 C -4,30 -18,20 -23,0 Z"/></clipPath>
+  <clipPath id="cFaceA"><path d="M -76,-55 C -78,15 -64,60 -34,82 C -20,94 -9,100 0,100 C 9,100 20,94 34,82 C 64,60 78,15 76,-55 C 72,-148 -72,-148 -76,-55 Z"/></clipPath>
+  <clipPath id="cBodA"><path d="M -132,236 C -104,222 -66,246 -38,238 C -20,232 -8,242 0,252 C 8,242 20,232 38,238 C 66,246 104,222 132,236 C 136,300 126,360 116,420 C 112,450 110,470 108,492 L -108,492 C -110,470 -112,450 -116,420 C -126,360 -136,300 -132,236 Z"/></clipPath>
   </defs>`;
-  const TT='M -86,-130 C -140,-150 -206,-110 -214,-20 C -222,60 -196,140 -204,230 C -212,320 -250,390 -228,470 C -214,520 -176,552 -142,560 C -158,546 -172,528 -170,500 C -168,470 -150,452 -148,420 C -146,370 -168,320 -160,250 C -152,170 -140,110 -142,40 C -144,-20 -124,-80 -84,-104 Z';
-  const tails=[TT,mir(TT)].map((d,i)=>{const s=i?-1:1,M=i?mir:(x=>x);return pth(d,'url(#hairG)',OL)+
-    pth(M('M -150,-40 C -140,60 -158,200 -150,300 C -146,360 -160,420 -152,470 C -168,420 -168,350 -166,290 C -160,200 -150,80 -150,-40 Z'),H3,null,0,'opacity=".45"')+
-    ln(M('M -100,-112 C -160,-80 -184,20 -178,120 C -172,220 -200,320 -196,420'),H3,1.6,.55)+ln(M('M -128,-70 C -170,40 -152,160 -170,260 C -188,360 -216,420 -202,500'),H3,1.4,.5)+
-    pth(M('M -196,-50 C -204,-10 -202,30 -194,62 C -189,30 -189,-10 -196,-50 Z'),HH,null,0,'opacity=".7"')+pth(M('M -214,330 C -222,360 -222,390 -214,420 C -210,390 -210,360 -214,330 Z'),HH,null,0,'opacity=".55"')+
-    `<ellipse cx="${-92*s}" cy="-122" rx="21" ry="16" transform="rotate(${30*s} ${-92*s} -122)" fill="${PK}" stroke="${OL}" stroke-width="2"/>`+ln(M('M -104,-132 C -96,-122 -88,-114 -78,-110'),PKD,1.4,.7)}).join('');
-  const back=pth('M -100,-50 C -116,-170 -62,-210 0,-210 C 62,-210 116,-170 100,-50 C 104,20 98,70 88,118 C 60,128 -60,128 -88,118 C -98,70 -104,20 -100,-50 Z','#5a2e1f',OL);
-  const LEG='M -104,890 C -100,990 -97,1080 -93,1150 C -97,1210 -98,1270 -88,1330 C -84,1358 -82,1384 -80,1402 L -44,1402 C -43,1372 -40,1332 -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z';
-  const legInner=`<path d="M -40,900 C -36,1000 -36,1080 -38,1150 C -36,1200 -36,1250 -40,1300 L -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z" fill="${SKS}"/>
-    <rect x="-120" y="1178" width="110" height="240" fill="${WT}"/><rect x="-55" y="1178" width="40" height="240" fill="${WTS}"/>
-    <rect x="-120" y="1178" width="110" height="7" fill="${PK}"/><rect x="-120" y="1190" width="110" height="4" fill="${PK}"/>
-    <ellipse cx="-66" cy="1148" rx="10" ry="6" fill="#fff" opacity=".4"/>`;
-  const SHOE='M -96,1392 C -112,1404 -116,1440 -102,1462 C -88,1480 -46,1480 -36,1462 C -29,1444 -32,1408 -42,1394 C -60,1388 -80,1388 -96,1392 Z';
-  const legs=[0,1].map(i=>{const M=i?mir:(x=>x);return `<g ${i?'transform="scale(-1,1)"':''}><path d="${LEG}" fill="${SK}"/><g clip-path="url(#cLegL)">${legInner}</g>${pth(LEG,'none',OL)}</g>`+
-    pth(M(SHOE),SH,OL)+ln(M('M -97,1414 C -80,1422 -56,1422 -40,1412'),'#a8285e',5)+`<circle cx="${i?52:-52}" cy="1417" r="3.5" fill="#ffd1e4"/>`+ln(M('M -104,1456 C -90,1474 -48,1474 -36,1458'),'#9e2a5c',3)+`<ellipse cx="${i?80:-80}" cy="1440" rx="9" ry="4" fill="#fff" opacity=".5"/>`}).join('');
-  let pet='M -330,860 L -334,925';for(let i=0;i<12;i++){const x0=-334+i*55.67;pet+=` Q ${f1(x0+27.8)},${i%2?976:968} ${f1(x0+55.67)},${925+(i%2?0:5)}`}pet+=' L 330,860 Z';
-  let lace='';for(let i=0;i<12;i++)lace+=`<circle cx="${f1(-306+i*55.67)}" cy="948" r="3.2" fill="${WTS}"/>`;
-  let pleats='';for(let i=-4;i<=4;i++){const xt=i*27,xb=i*70;pleats+=`<path d="M ${xt},492 L ${xt+7},492 L ${xb+30},930 L ${xb},930 Z" fill="${PKS}" opacity=".5"/>`+ln(`M ${xt-3},494 L ${xb-10},925`,'#fff',2.4,.35)}
-  const skirt=pth(pet,WT,OL,2)+lace+`<use href="#pSkirt" fill="url(#skirtG)"/><g clip-path="url(#cSkirt)">${pleats}
-    <path d="M 30,490 L 118,490 C 172,580 262,760 342,886 L 160,950 Z" fill="${PKS}" opacity=".55"/>
-    <path d="M -330,846 Q -300,880 -270,866 Q -240,890 -205,872 Q -170,896 -135,878 Q -100,898 -68,880 Q -35,900 0,882 Q 35,900 68,880 Q 100,898 135,878 Q 170,896 205,872 Q 240,890 270,866 Q 300,880 330,846" fill="none" stroke="${WT}" stroke-width="11"/>
-    <path d="M -330,836 Q -300,870 -270,856 Q -240,880 -205,862 Q -170,886 -135,868 Q -100,888 -68,870 Q -35,890 0,872 Q 35,890 68,870 Q 100,888 135,868 Q 170,886 205,862 Q 240,880 270,856 Q 300,870 330,836" fill="none" stroke="${PKD}" stroke-width="2" opacity=".6"/>
-    </g><use href="#pSkirt" fill="none" stroke="${OL}" stroke-width="2.2"/>`;
-  const neck=pth('M -27,30 C -28,90 -31,130 -38,174 L 38,174 C 31,130 28,90 27,30 Z',SK,OL)+pth('M -28,40 L 28,40 L 28,72 C 14,102 -14,102 -28,72 Z',SKS);
-  const bod=`<g clip-path="url(#cBod)"><rect x="-200" y="140" width="400" height="380" fill="url(#bodG)"/>
-    <path d="M 60,160 C 120,165 160,185 160,200 C 160,280 140,360 124,500 L 62,500 C 82,400 92,300 60,160 Z" fill="${PKS}" opacity=".7"/>
-    ${both('M -112,300 C -82,334 -32,338 -8,312 C -32,326 -82,322 -112,300 Z',PKS)}
-    ${ln('M -80,214 C -88,290 -72,330 -62,490',PKD,1.3,.55)}${ln('M 80,214 C 88,290 72,330 62,490',PKD,1.3,.55)}
-    <path d="M -100,176 C -84,214 -40,236 0,244 C 40,236 84,214 100,176 L 100,194 C 84,230 40,254 0,260 C -40,254 -84,230 -100,194 Z" fill="${PKD}" opacity=".35"/>
-    <path d="M -40,236 L 40,236 L 30,492 L -30,492 Z" fill="${WT}"/><path d="M 14,236 L 40,236 L 30,492 L 10,492 Z" fill="${WTS}" opacity=".7"/>
-    ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<circle cx="-38" cy="${246+i*25}" r="5" fill="none" stroke="${WTS}" stroke-width="1.6"/><circle cx="38" cy="${246+i*25}" r="5" fill="none" stroke="${WTS}" stroke-width="1.6"/>`).join('')}
-    ${[300,350,400,450].map(y=>`<circle cx="0" cy="${y}" r="7" fill="${RD}" stroke="${OL}" stroke-width="1.6"/><circle cx="-2.4" cy="${y-2.4}" r="2" fill="#fff" opacity=".8"/>`).join('')}
-    </g>`+pth('M -40,160 C -80,162 -130,170 -150,190 C -158,240 -150,300 -132,350 C -122,400 -118,450 -112,490 L 112,490 C 118,450 122,400 132,350 C 150,300 158,240 150,190 C 130,170 80,162 40,160 Z','none',OL)+
-    pth('M -116,468 C -40,476 40,476 116,468 L 114,508 C 40,516 -40,516 -114,508 Z',WT,OL)+pth('M 40,474 C 70,474 96,472 116,468 L 114,508 C 96,512 70,514 40,515 Z',WTS,null,0,'opacity=".8"')+
-    pth('M 0,500 C -14,490 -14,478 -6,476 C -2,476 0,479 0,482 C 0,479 2,476 6,476 C 14,478 14,490 0,500 Z',RD,OL,1.5);
-  const COL='M -4,238 C -40,234 -86,214 -102,170 C -80,160 -46,156 -26,150 C -22,188 -14,216 -4,238 Z';
-  const collar=both(COL,WT,OL)+ln('M -8,228 C -40,224 -78,206 -92,176',PK,4,.95)+ln('M 8,228 C 40,224 78,206 92,176',PK,4,.95)+pth('M 4,238 C 14,216 22,188 26,150 C 46,156 80,160 102,170 C 98,182 92,192 84,200 C 60,214 30,228 4,238 Z',WTS,null,0,'opacity=".6"');
-  const RIB='M -4,222 C -30,200 -64,206 -62,227 C -60,248 -30,250 -4,233 Z',TAIL='M -6,236 C -14,262 -24,290 -32,314 L -17,305 L -10,318 C -4,292 0,264 0,240 Z';
-  const ribbon=both(TAIL,RD,OL)+both(RIB,RD,OL)+ln('M -12,226 C -28,216 -46,218 -52,227',RDS,1.6,.8)+ln('M 12,226 C 28,216 46,218 52,227',RDS,1.6,.8)+
-    `<ellipse cx="0" cy="229" rx="11" ry="12.5" fill="${RDS}" stroke="${OL}" stroke-width="2"/><ellipse cx="-3" cy="225" rx="3.5" ry="2.5" fill="#fff" opacity=".6"/>`;
-  const SLV='M -110,170 C -150,150 -206,176 -206,228 C -206,262 -178,276 -148,266 C -134,244 -126,206 -110,170 Z',CUFF='M -198,250 C -188,268 -164,276 -148,268 L -143,283 C -161,294 -194,286 -206,265 Z';
-  const sleeves=both(SLV,PK,OL)+pth('M -136,174 C -128,206 -134,244 -148,266 C -170,272 -190,266 -200,250 C -176,252 -150,236 -136,174 Z',PKS,null,0,'opacity=".55"')+pth('M 136,174 C 128,206 134,244 148,266 C 170,272 190,266 200,250 C 186,230 170,200 136,174 Z',PKS,null,0,'opacity=".7"')+
-    ln('M -132,172 C -160,190 -172,220 -170,252',PKD,1.3,.55)+ln('M -152,166 C -182,186 -194,214 -192,246',PKD,1.3,.5)+ln('M 132,172 C 160,190 172,220 170,252',PKD,1.3,.55)+ln('M 152,166 C 182,186 194,214 192,246',PKD,1.3,.5)+
-    both(CUFF,WT,OL,2);
+  // 後ろ髪（ゆるいウェーブで腰まで）
+  const BH='M 0,-218 C 82,-218 122,-160 118,-70 C 116,0 128,60 142,120 C 158,200 150,280 164,340 C 176,400 160,452 176,500 C 156,490 142,500 122,512 C 130,470 112,430 100,400 L -100,400 C -112,430 -130,470 -122,512 C -142,500 -156,490 -176,500 C -160,452 -176,400 -164,340 C -150,280 -158,200 -142,120 C -128,60 -116,0 -118,-70 C -122,-160 -82,-218 0,-218 Z';
+  const back=pth(BH,'url(#hairA)',HO)+ln('M -118,-40 C -126,60 -150,160 -146,260 C -142,360 -168,430 -160,490',H3,1.6,.5)+ln('M 118,-40 C 126,60 150,160 146,260 C 142,360 168,430 160,490',H3,1.6,.5)+
+    ln('M -96,60 C -112,160 -124,260 -122,360',H3,1.3,.4)+ln('M 96,60 C 112,160 124,260 122,360',H3,1.3,.4)+
+    pth('M -150,180 C -158,230 -156,280 -150,320 C -146,280 -146,230 -150,180 Z',HL,null,0,'opacity=".6"')+pth('M 150,180 C 158,230 156,280 150,320 C 146,280 146,230 150,180 Z',HL,null,0,'opacity=".35"');
+  // 脚（左＝重心脚、右＝膝を内に入れた遊脚）＋白ブーツ
+  const LL='M -100,860 C -98,960 -92,1060 -86,1140 C -90,1200 -92,1260 -82,1320 C -78,1350 -76,1372 -76,1392 L -40,1392 C -38,1360 -32,1320 -26,1280 C -20,1230 -22,1180 -24,1140 C -20,1060 -14,960 -10,860 Z';
+  const RL='M 12,860 C 16,960 22,1060 20,1140 C 24,1200 42,1270 54,1330 C 60,1358 64,1374 66,1392 L 98,1386 C 98,1360 94,1330 88,1290 C 82,1240 72,1190 78,1140 C 90,1060 102,960 104,860 Z';
+  const legs=[LL,RL].map((d,i)=>`<clipPath id="leg${i}"><path d="${d}"/></clipPath><path d="${d}" fill="${SK}"/><g clip-path="url(#leg${i})">
+      <rect x="${i?40:-60}" y="850" width="80" height="600" fill="${SKS}"/>
+      <ellipse cx="${i?44:-56}" cy="1140" rx="11" ry="7" fill="${SKL}" opacity=".7"/>
+      <rect x="-200" y="1236" width="400" height="300" fill="url(#bootA)"/><rect x="${i?52:-48}" y="1236" width="60" height="300" fill="${BTS}" opacity=".8"/>
+      <rect x="-200" y="1230" width="400" height="16" fill="${LV}"/><rect x="-200" y="1246" width="400" height="4" fill="${LVD}" opacity=".5"/>
+    </g>${pth(d,'none',OL)}`).join('')+
+    pth('M -88,1380 C -100,1402 -102,1442 -92,1462 C -78,1478 -40,1476 -34,1460 C -30,1440 -34,1404 -40,1384 Z','url(#bootA)',OL)+pth('M -40,1384 C -34,1404 -30,1440 -34,1460 C -40,1468 -48,1470 -54,1470 C -50,1440 -50,1410 -52,1386 Z',BTS)+
+    pth('M 58,1380 C 50,1404 56,1440 72,1460 C 88,1476 116,1468 118,1452 C 120,1430 104,1404 98,1384 Z','url(#bootA)',OL)+pth('M 98,1384 C 104,1404 120,1430 118,1452 C 112,1460 104,1462 98,1462 C 104,1436 96,1404 90,1386 Z',BTS)+
+    ln('M -96,1458 C -80,1472 -46,1472 -34,1458',LVD,3)+ln('M 68,1456 C 84,1470 108,1466 118,1452',LVD,3)+
+    `<path d="M -80,1238 C -86,1226 -96,1222 -98,1232 C -98,1240 -88,1242 -80,1238 Z M -64,1238 C -58,1226 -48,1222 -46,1232 C -46,1240 -56,1242 -64,1238 Z" fill="${LV}" stroke="${OL}" stroke-width="1.6"/><circle cx="-72" cy="1238" r="5" fill="${GD}" stroke="${OL}" stroke-width="1.4"/>`+
+    `<path d="M 66,1238 C 60,1226 50,1222 48,1232 C 48,1240 58,1242 66,1238 Z M 82,1238 C 88,1226 98,1222 100,1232 C 100,1240 90,1242 82,1238 Z" fill="${LV}" stroke="${OL}" stroke-width="1.6"/><circle cx="74" cy="1238" r="5" fill="${GD}" stroke="${OL}" stroke-width="1.4"/>`;
+  // スカート（2段ティアード・ギンガム）＋パニエ
+  const wave=(x0,x1,y,amp,n)=>{let s='';const w=(x1-x0)/n;for(let i=0;i<n;i++){const a=x0+i*w;s+=` Q ${f1(a+w/2)},${f1(y+amp)} ${f1(a+w)},${f1(y)}`}return s};
+  const T2=`M -205,660 C -240,740 -276,810 -302,858${wave(-302,302,858,26,12)} C 276,810 240,740 205,660 Z`;
+  const T1=`M -108,488 C -138,560 -178,640 -214,688${wave(-214,214,688,22,9)} C 178,640 138,560 108,488 Z`;
+  const PET=`M -296,840 L -300,880${wave(-300,300,880,24,14)} L 296,840 Z`;
+  const fold=(top,bot,y0,y1,n)=>{let s='';for(let i=0;i<n;i++){const t=(i+0.5)/n-0.5,xt=t*top*2,xb=t*bot*2;s+=`<path d="M ${f1(xt)},${y0} L ${f1(xt+6)},${y0} L ${f1(xb+20)},${y1} L ${f1(xb-4)},${y1} Z" fill="${LVD}" opacity=".22"/>`}return s};
+  const skirt=pth(PET,WT,OL,1.8)+`<g opacity=".7">${Array.from({length:14},(_,i)=>`<circle cx="${f1(-279+i*42.9)}" cy="890" r="3.4" fill="${WTS}"/>`).join('')}</g>`+
+    `<clipPath id="t2"><path d="${T2}"/></clipPath><path d="${T2}" fill="url(#ging)"/><g clip-path="url(#t2)">${fold(205,300,660,890,10)}<path d="M 60,640 L 210,640 C 240,740 276,810 320,880 L 120,900 Z" fill="${LVS}" opacity=".45"/>
+      <path d="M -310,846${wave(-310,310,846,26,12)}" fill="none" stroke="${WT}" stroke-width="10"/></g>${pth(T2,'none',OL)}`+
+    `<clipPath id="t1"><path d="${T1}"/></clipPath><path d="${T1}" fill="url(#ging)"/><g clip-path="url(#t1)">${fold(108,214,488,712,8)}<path d="M 40,480 L 112,480 C 140,560 178,640 230,712 L 90,720 Z" fill="${LVS}" opacity=".45"/>
+      <path d="M -222,676${wave(-222,222,676,22,9)}" fill="none" stroke="${WT}" stroke-width="9"/></g>${pth(T1,'none',OL)}`;
+  // 上半身
+  const chest=pth('M -30,158 C -60,164 -112,170 -144,190 C -160,202 -160,226 -146,242 L 146,242 C 160,226 160,202 144,190 C 112,170 60,164 30,158 Z',SK,OL)+
+    pth('M 40,164 C 80,168 120,176 144,190 C 160,202 160,226 146,242 L 100,242 C 120,220 110,190 40,164 Z',SKS,null,0,'opacity=".8"')+
+    ln('M -26,178 C -50,184 -80,182 -106,188',SKS,1.8)+ln('M 26,178 C 50,184 80,182 106,188',SKS,1.8)+ln('M -8,196 C -4,206 4,206 8,196',SKS,1.4,.8);
+  const neck=pth('M -24,70 C -25,108 -27,135 -32,166 L 32,166 C 27,135 25,108 24,70 Z',SK,OL)+pth('M -25,80 L 25,80 L 25,96 C 12,120 -12,120 -25,96 Z',SKS)+ln('M 14,128 C 18,142 22,152 28,160',SKS,1.4,.7);
+  const BOD='M -132,236 C -104,222 -66,246 -38,238 C -20,232 -8,242 0,252 C 8,242 20,232 38,238 C 66,246 104,222 132,236 C 136,300 126,360 116,420 C 112,450 110,470 108,492 L -108,492 C -110,470 -112,450 -116,420 C -126,360 -136,300 -132,236 Z';
+  let lace='';for(let y=272;y<=470;y+=22)lace+=`<circle cx="-15" cy="${y}" r="3.6" fill="${GD}" stroke="${OL}" stroke-width="1"/><circle cx="15" cy="${y}" r="3.6" fill="${GD}" stroke="${OL}" stroke-width="1"/>`+(y<470?ln(`M -15,${y} L 15,${y+22} M 15,${y} L -15,${y+22}`,WT,2.4):'');
+  const bod=`<path d="${BOD}" fill="${LV}"/><g clip-path="url(#cBodA)">
+      <path d="M 50,230 C 100,236 140,240 140,250 C 136,320 126,380 112,500 L 58,500 C 76,400 86,300 50,230 Z" fill="${LVS}" opacity=".75"/>
+      <path d="M -120,330 C -90,362 -40,364 -20,340 C -40,352 -90,350 -120,330 Z M 120,330 C 90,362 40,364 20,340 C 40,352 90,350 120,330 Z" fill="${LVD}" opacity=".45"/>
+      <path d="M -90,250 C -84,300 -86,360 -70,500 L -84,500 C -100,360 -100,300 -102,250 Z" fill="${LVL}" opacity=".55"/>
+      <path d="M -28,250 L 28,250 L 24,500 L -24,500 Z" fill="${WT}"/><path d="M 6,250 L 28,250 L 24,500 L 4,500 Z" fill="${WTS}" opacity=".7"/>${lace}
+      ${ln('M -66,252 C -72,320 -64,400 -58,492',LVD,1.3,.5)}${ln('M 66,252 C 72,320 64,400 58,492',LVD,1.3,.5)}
+    </g>${pth(BOD,'none',OL)}
+    <path d="M -132,236 C -104,222 -66,246 -38,238 C -20,232 -8,242 0,252 C 8,242 20,232 38,238 C 66,246 104,222 132,236" fill="none" stroke="${WT}" stroke-width="13" stroke-dasharray="0.1 10" stroke-linecap="round"/>
+    <path d="M -132,236 C -104,222 -66,246 -38,238 C -20,232 -8,242 0,252 C 8,242 20,232 38,238 C 66,246 104,222 132,236" fill="none" stroke="${WT}" stroke-width="7"/>
+    ${ln('M -132,231 C -104,217 -66,241 -38,233 C -20,227 -8,237 0,247 C 8,237 20,227 38,233 C 66,241 104,217 132,231',OL,1.2,.5)}
+    <path d="M 0,244 L 6,254 L 0,264 L -6,254 Z" fill="${GD}" stroke="${OL}" stroke-width="1.4"/>
+    ${pth('M -112,468 C -40,478 40,478 112,468 L 110,506 C 40,516 -40,516 -110,506 Z',WT,OL)}${pth('M 40,476 C 70,475 96,472 112,468 L 110,506 C 96,510 70,513 40,515 Z',WTS,null,0,'opacity=".8"')}
+    ${pth('M -58,488 C -84,460 -116,468 -112,490 C -108,510 -80,506 -58,494 Z',WT,OL)}${pth('M -58,488 C -40,462 -10,466 -14,488 C -18,508 -42,506 -58,494 Z',WT,OL)}
+    ${pth('M -62,496 C -70,520 -78,546 -86,566 L -72,560 L -66,574 C -60,548 -56,522 -54,498 Z',WT,OL,1.8)}${pth('M -54,496 C -46,520 -40,546 -34,568 L -48,562 L -54,576 C -56,550 -58,522 -60,498 Z',WT,OL,1.8)}
+    <ellipse cx="-58" cy="491" rx="9" ry="10" fill="${WTS}" stroke="${OL}" stroke-width="1.8"/>`;
+  // 袖（パフスリーブ）
+  const puff=(S,E)=>{const a=Math.atan2(E[1]-S[1],E[0]-S[0])*180/Math.PI,c=[S[0]+(E[0]-S[0])*0.2,S[1]+(E[1]-S[1])*0.2],b=[S[0]+(E[0]-S[0])*0.42,S[1]+(E[1]-S[1])*0.42];
+    return `<g transform="translate(${f1(c[0])},${f1(c[1])}) rotate(${f1(a)})"><path d="M -40,-40 C -10,-56 34,-50 48,-18 C 56,6 50,30 34,42 C 4,52 -30,46 -44,24 C -54,4 -52,-24 -40,-40 Z" fill="${LV}" stroke="${OL}" stroke-width="2"/>
+      <path d="M 34,42 C 50,30 56,6 48,-18 C 40,-2 30,22 10,40 Z" fill="${LVS}" opacity=".8"/>${ln('M -10,-46 C 4,-20 6,14 -2,44',LVD,1.3,.5)}${ln('M 14,-46 C 26,-18 28,16 18,46',LVD,1.3,.5)}<ellipse cx="-16" cy="-30" rx="14" ry="5" transform="rotate(-20 -16 -30)" fill="#fff" opacity=".35"/></g>
+      <g transform="translate(${f1(b[0])},${f1(b[1])}) rotate(${f1(a)})"><path d="M -8,-34 C 2,-30 4,30 -6,36 C 2,40 14,36 14,28 C 18,10 18,-12 12,-30 C 8,-38 -2,-38 -8,-34 Z" fill="${WT}" stroke="${OL}" stroke-width="1.8"/>${ln('M 4,-30 C 10,-10 10,10 4,30',WTS,1.4)}</g>`};
   // 腕
-  const AR=(...segs)=>armSVG(segs,SK,SKS,OL);
-  let armR,handR='';
-  if(pose==='pair'){
-    armR=AR([[166,250],[216,388],27,23],[[216,388],[70,238],23,17.5]);
-    handR=pth('M 146,166 C 128,140 80,138 74,182 C 70,200 66,214 58,226 L 72,248 C 92,254 120,264 146,272 C 151,264 149,254 144,249 C 124,233 100,214 100,190 C 100,164 130,160 144,182 C 150,176 150,170 146,166 Z',SK,OL)+
-      pth('M 74,182 C 70,200 66,214 58,226 L 72,248 C 80,246 86,232 88,214 C 90,200 84,186 74,182 Z',SKS,null,0,'opacity=".8"')+
-      ln('M 104,150 C 108,158 110,164 108,172',SKS,1.4)+ln('M 122,146 C 126,154 127,160 126,168',SKS,1.4)+ln('M 90,162 C 96,168 98,176 98,182',SKS,1.4)+ln('M 96,236 C 108,240 122,246 134,254',SKS,1.4);
-  }else{
-    armR=AR([[166,250],[224,388],27,23],[[224,388],[158,478],23,17.5]);
-    handR=pth('M 142,468 C 128,478 112,490 102,500 C 94,508 96,521 106,523 C 120,527 140,517 158,507 C 166,501 172,495 175,487 Z',SK,OL)+
-      ln('M 112,497 C 120,500 126,506 128,513',SKS,1.4)+ln('M 123,490 C 131,494 137,500 139,507',SKS,1.4)+ln('M 134,483 C 142,487 147,493 149,499',SKS,1.4);
+  let armBack='',armFront='',handFront='';
+  const SL=[-138,214],SR=[138,214];
+  if(pose==='pair'){const E=[206,382],W=[68,238];
+    armBack=partSVG(SR,E,[29,27,22],[.08,.02],C)+puff(SR,E);
+    armFront=partSVG(E,W,[23,21.5,16.5],[.07,0],C);handFront=heartHalf(C);
+  }else{const E=[198,372],W=[186,512];
+    armBack=merged([partSVG(SR,E,[29,27,22.5],[.08,.02],C,true),partSVG(E,W,[23,21,16.5],[.06,0],C,true)])+puff(SR,E)+ln('M 190,380 Q 196,374 204,378',SKS,1.5);
+    handFront=pth('M 172,500 C 162,520 162,544 172,560 C 182,574 202,576 210,562 C 216,550 210,532 200,520 C 196,512 192,506 190,500 Z',SK,OL)+pth('M 196,516 C 206,526 214,546 208,560 C 204,566 198,568 192,568 C 200,552 200,532 190,516 Z',SKS,null,0,'opacity=".8"')+
+      ln('M 176,548 C 184,556 194,560 204,558 M 174,536 C 182,544 192,548 202,548',SKS,1.4)+pth('M 172,522 C 164,526 160,536 164,544 C 170,548 178,542 180,532 Z',SK,OL,1.6);
   }
-  const armL=AR([[-166,250],[-262,318],27,24],[[-262,318],[-182,64],24,17.5]);
-  const handL=pth('M -203,6 C -207,30 -201,52 -191,68 L -165,72 C -151,56 -145,30 -147,6 C -161,0 -189,0 -203,6 Z',SK,OL)+
-    limbSVG([-158,8],[-145,-66],9,7.4,SK,SKS,OL,0.05)+limbSVG([-177,6],[-191,-72],9.2,7.4,SK,SKS,OL,0.05)+
-    `<ellipse cx="-190" cy="2" rx="11.5" ry="9" fill="${SK}" stroke="${OL}" stroke-width="2"/><ellipse cx="-203" cy="11" rx="8.5" ry="8" fill="${SK}" stroke="${OL}" stroke-width="2"/>`+
-    limbSVG([-149,44],[-185,13],10.5,8.5,SK,SKS,OL,0.05)+ln('M -196,42 C -184,36 -170,38 -160,46',SKS,1.3)+
-    `<ellipse cx="-145" cy="-66" rx="4" ry="3" fill="#fff" opacity=".6"/><ellipse cx="-191" cy="-72" rx="4" ry="3" fill="#fff" opacity=".6"/>`;
+  const ES=[-250,320],WS=[-176,58];
+  const peaceUpper=partSVG(SL,ES,[29,27.5,23],[.02,.07],C)+puff(SL,ES);
+  const peaceFore=partSVG(ES,WS,[24,22,16.5],[0,.07],C);
+  const peaceHand=pth('M -194,52 C -204,32 -206,8 -200,-6 C -190,-15 -160,-17 -146,-8 C -139,8 -141,30 -152,52 Z',SK,OL)+pth('M -150,-6 C -142,8 -142,30 -152,52 L -162,52 C -156,30 -154,10 -150,-6 Z',SKS,null,0,'opacity=".8"')+
+    finger([-158,-8],[-147,-82],17,14,C)+finger([-178,-11],[-193,-88],17.5,14,C)+
+    pth('M -207,-2 C -210,-18 -194,-24 -184,-17 C -178,-10 -181,1 -190,5 C -198,7 -205,5 -207,-2 Z',SK,OL)+pth('M -214,12 C -218,0 -206,-5 -198,0 C -193,6 -195,14 -202,17 C -208,19 -213,17 -214,12 Z',SK,OL)+
+    finger([-149,32],[-189,-1],20,15.5,C)+ln('M -196,36 C -184,30 -170,32 -160,40',SKS,1.4);
   // 顔
-  const FACE='M -78,-60 C -80,10 -66,50 -38,70 C -22,80 -10,84 0,84 C 10,84 22,80 38,70 C 66,50 80,10 78,-60 C 74,-150 -74,-150 -78,-60 Z';
-  const face=`<path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFace)"><ellipse cx="0" cy="-56" rx="100" ry="32" fill="${SKS}"/><path d="M 60,-40 C 76,0 70,40 44,70 L 90,90 L 90,-40 Z" fill="${SKS}" opacity=".6"/></g>${pth(FACE,'none',OL)}
-    <ellipse cx="-50" cy="30" rx="28" ry="15" fill="url(#blushG)"/><ellipse cx="50" cy="30" rx="28" ry="15" fill="url(#blushG)"/>
-    ${[-1,1].map(s=>[0,1,2].map(i=>ln(`M ${s*50+(i-1)*8+3},24 L ${s*50+(i-1)*8-2},34`,'#f06d94',1.1,.8)).join('')).join('')}
-    ${eyeIdol(-37,-14,-1)}${eyeIdol(37,-14,1)}
-    ${ln('M 2,22 C 4,25 4,28 2,30','#dd9a88',1.6)}
-    ${pth('M -10,46 C -4,49 4,49 10,46 C 7,59 -7,59 -10,46 Z','#cc4e66',OL,1.4)}<ellipse cx="0" cy="54" rx="5" ry="2.8" fill="#ff93a4"/>`;
-  const SIDE='M -76,-70 C -96,-10 -104,60 -96,130 C -93,142 -85,146 -79,140 C -84,100 -82,40 -66,-22 Z';
-  const hairF=both(SIDE,'url(#bangG)',OL)+ln('M -80,-30 C -90,20 -92,80 -88,126',H3,1.3,.5)+ln('M 80,-30 C 90,20 92,80 88,126',H3,1.3,.5)+
-    `<use href="#pBang" fill="url(#bangG)"/><g clip-path="url(#cBang)">
-      <path d="M -110,-30 C -60,-14 60,-14 110,-30 L 110,50 L -110,50 Z" fill="${H3}" opacity=".45"/>
-      ${[[-72,-60],[-46,-76],[-14,-82],[16,-80],[46,-74],[72,-52]].map(([x,y])=>ln(`M ${f1(x*0.25)},-190 C ${f1(x*0.7)},-150 ${f1(x*0.95)},-110 ${x},${y+4}`,H3,1.4,.5)).join('')}
-      ${[[-50,-134,-.42,22],[-6,-146,-.04,24],[40,-140,.32,20]].map(([x,y,r,w])=>`<path d="M ${x-w},${y+3} Q ${x},${y-6} ${x+w},${y+3} Q ${x},${y+1} ${x-w},${y+3} Z" transform="rotate(${r*40} ${x} ${y})" fill="${HH}" opacity=".9"/>`).join('')}
-      <ellipse cx="-30" cy="-150" rx="3.5" ry="1.6" fill="#fff" opacity=".8"/><ellipse cx="22" cy="-152" rx="3" ry="1.4" fill="#fff" opacity=".8"/>
-    </g><use href="#pBang" fill="none" stroke="${OL}" stroke-width="2.2"/>`+
-    pth('M -4,-194 C 6,-240 52,-246 48,-214 C 40,-228 18,-222 8,-194 Z','url(#bangG)',OL)+
-    ln('M 20,-62 C 32,-70 50,-70 62,-62','#6b3a2c',2.2,.45)+ln('M -20,-62 C -32,-70 -50,-70 -62,-62','#6b3a2c',2.2,.45)+
-    pth('M 82,-166 C 72,-198 106,-216 122,-198 C 132,-184 114,-164 84,-164 Z',PK,OL)+pth('M 78,-166 C 56,-192 36,-178 42,-160 C 48,-146 66,-152 78,-162 Z',PK,OL)+
-    ln('M 88,-170 C 96,-186 108,-192 116,-190',PKD,1.4,.6)+ln('M 72,-168 C 62,-176 52,-176 48,-168',PKD,1.4,.6)+`<circle cx="80" cy="-165" r="10" fill="${PKD}" stroke="${OL}" stroke-width="2"/><ellipse cx="104" cy="-196" rx="6" ry="3" fill="#fff" opacity=".5"/>`;
-  const HT='translate(0,20) translate(0,84) scale(1.08) translate(0,-84)';
-  return defs+`<g transform="${HT}">${tails}${back}</g>`+`<g transform="scale(1.18,1)">${legs}</g>`+skirt+neck+bod+collar+ribbon+sleeves+armR+handR+`<g transform="${HT}">${face}${hairF}</g>`+armL+handL;
+  const FACE='M -76,-55 C -78,15 -64,60 -34,82 C -20,94 -9,100 0,100 C 9,100 20,94 34,82 C 64,60 78,15 76,-55 C 72,-148 -72,-148 -76,-55 Z';
+  const face=`<path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFaceA)"><path d="M -100,-130 L 100,-130 L 100,-62 C 60,-40 -60,-40 -100,-62 Z" fill="${SKS}"/><path d="M 58,-30 C 74,10 68,52 40,82 L 92,100 L 92,-30 Z" fill="${SKS}" opacity=".6"/><ellipse cx="-40" cy="-20" rx="30" ry="40" fill="${SKL}" opacity=".5"/></g>${pth(FACE,'none',OL)}
+    <ellipse cx="-50" cy="36" rx="27" ry="14" fill="url(#blushA)"/><ellipse cx="50" cy="36" rx="27" ry="14" fill="url(#blushA)"/>
+    ${[-1,1].map(s=>[0,1,2].map(i=>ln(`M ${s*50+(i-1)*8+3},30 L ${s*50+(i-1)*8-2},40`,'#f37a98',1.1,.75)).join('')).join('')}
+    ${idolEye(-36,-6,-1)}${idolEye(36,-6,1)}
+    ${ln('M 1,30 C 3,33 3,36 1,38','#e19a88',1.5)}
+    ${pth('M -11,56 C -4,60 4,60 11,56 C 9,70 -9,70 -11,56 Z','#d65a6e',OL,1.4)}<path d="M -6,64 C -2,61 3,61 6,64 C 3,68 -3,68 -6,64 Z" fill="#ff9aab"/>`;
+  // 前髪・横髪・リボン
+  const SIDE='M -80,-70 C -98,-10 -102,60 -98,120 C -94,180 -118,230 -112,292 C -108,322 -88,338 -72,328 C -86,312 -92,290 -86,262 C -78,220 -70,170 -72,110 C -74,50 -68,-10 -62,-40 Z';
+  const CAP='M -88,-36 C -102,-140 -58,-202 0,-202 C 58,-202 102,-140 88,-36 C 76,-88 46,-120 0,-124 C -46,-120 -76,-88 -88,-36 Z';
+  const strands=[[-64,-72,-28,24],[-42,-48,-40,22],[-20,-22,-50,20],[2,0,-44,19],[22,28,-50,20],[44,52,-38,22],[64,74,-26,24]];
+  const sd=strands.map(([xt,xx,yy,w])=>`M ${xt-w/2},-122 C ${xt-w/2},-92 ${xx-5},${yy-22} ${xx},${yy} C ${xx+5},${yy-22} ${xt+w/2},-92 ${xt+w/2},-122 Z`).join(' ');
+  const hairF=both(SIDE,'url(#lockA)',HO)+ln('M -84,-20 C -92,40 -92,100 -94,150 C -98,200 -106,250 -100,300',H3,1.3,.45)+ln('M 84,-20 C 92,40 92,100 94,150 C 98,200 106,250 100,300',H3,1.3,.45)+
+    pth('M -96,160 C -100,200 -104,230 -102,260 C -98,230 -96,200 -96,160 Z',HL,null,0,'opacity=".6"')+
+    pth(sd,'url(#hairF)',HO,1.8)+ln('M -60,-110 C -64,-80 -68,-50 -70,-34 M -20,-114 C -21,-90 -22,-70 -22,-54 M 24,-114 C 26,-90 27,-70 28,-54 M 62,-110 C 66,-80 70,-50 72,-32',H2,1.2,.55)+
+    pth(CAP,'url(#hairF)',HO)+ln('M -60,-180 C -80,-150 -84,-110 -84,-70 M -24,-196 C -40,-170 -46,-140 -46,-120 M 24,-196 C 40,-170 46,-140 46,-120 M 60,-180 C 80,-150 84,-110 84,-70',H2,1.3,.5)+
+    `<path d="M -70,-150 Q -36,-176 0,-178 Q 36,-176 70,-150 Q 36,-166 0,-166 Q -36,-166 -70,-150 Z" fill="${HL}" opacity=".85"/><ellipse cx="-30" cy="-168" rx="4" ry="1.8" fill="#fff"/><ellipse cx="20" cy="-170" rx="3" ry="1.5" fill="#fff"/>`+
+    pth('M -6,-200 C 0,-242 46,-250 44,-218 C 36,-232 16,-226 8,-200 Z','url(#hairF)',HO,1.8)+pth('M -2,-200 C -10,-232 -38,-238 -36,-216 C -30,-226 -16,-222 -10,-200 Z','url(#hairF)',HO,1.6)+
+    pth('M 86,-150 C 72,-182 106,-204 126,-188 C 140,-176 122,-152 88,-148 Z',LV,OL)+pth('M 82,-150 C 58,-174 34,-160 40,-140 C 46,-124 68,-132 82,-146 Z',LV,OL)+
+    pth('M 88,-146 C 100,-128 108,-104 112,-84 L 98,-90 L 94,-74 C 90,-98 86,-122 82,-144 Z',LV,OL,1.6)+
+    ln('M 94,-156 C 104,-174 116,-182 124,-180',LVD,1.4,.6)+ln('M 76,-152 C 64,-160 52,-158 48,-150',LVD,1.4,.6)+`<circle cx="84" cy="-149" r="10" fill="${LVD}" stroke="${OL}" stroke-width="1.8"/><ellipse cx="108" cy="-186" rx="6" ry="3" fill="#fff" opacity=".55"/>`+
+    [[100,-176],[118,-172],[56,-156],[50,-142]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="3" fill="#fff" opacity=".8"/>`).join('');
+  return defs+back+`<g transform="scale(1.15,1)">${legs}</g>`+skirt+chest+neck+bod+armBack+armFront+handFront+peaceUpper+face+hairF+peaceFore+peaceHand;
 }
+
+/* ===== お客さん（丸メガネ・白パーカー・推しタオル・ペンライト） ===== */
+function fanEye(cx,cy,sd){const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#2c211f';
+  return `<g transform="${T}"><g clip-path="url(#eyeB)"><path d="M -18,2 C -13,-14 10,-18 18,-6 C 20,6 13,14 3,15 C -7,16 -15,10 -18,2 Z" fill="#fffdfa"/>
+  <ellipse cx="1" cy="0" rx="11" ry="14" fill="url(#irisB)"/><ellipse cx="1" cy="-13" rx="20" ry="8" fill="#2a1a10" opacity=".35"/><ellipse cx="1" cy="-1" rx="4.6" ry="6.6" fill="#1e130c"/>
+  <ellipse cx="-4" cy="-5" rx="4.2" ry="3.4" fill="#fff"/><circle cx="5" cy="7" r="1.8" fill="#fff"/></g>
+  <path d="M -21,4 C -15,-18 12,-23 22,-6 L 19,-2 C 10,-16 -12,-13 -17,6 Z" fill="${lc}"/>${ln('M 16,9 C 10,15 0,17 -8,14',lc,1.2,.4)}</g>`}
 function fanSVG(){
-  const OL='#4a4258',SK='#f9dfcd',SKS='#eac0aa',HA='#2c2b38',HH='#5e5d74',TE='#8dc9ef',TES='#66a7d7',JE='#41557f',JES='#2f3f63',WT='#f6f6f8',WTS='#cfd2dc';
-  GID=100;
-  const defs=`<defs><linearGradient id="hairF" x1="0" y1="-210" x2="0" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#40404f"/><stop offset="1" stop-color="${HA}"/></linearGradient>
-  <linearGradient id="irisF" x1="0" y1="-15" x2="0" y2="17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#20140d"/><stop offset=".5" stop-color="#5a3826"/><stop offset="1" stop-color="#b07a52"/></linearGradient>
-  <radialGradient id="blushF"><stop offset="0" stop-color="#ff8a9e" stop-opacity=".35"/><stop offset="1" stop-color="#ff8a9e" stop-opacity="0"/></radialGradient>
-  <clipPath id="ecF"><path d="M -22,2 C -16,-16 12,-22 22,-8 C 23,6 16,16 4,18 C -8,19 -19,12 -22,2 Z"/></clipPath>
-  <clipPath id="cTee"><path id="pTee" d="M -46,168 C -90,170 -150,178 -186,200 C -192,300 -184,480 -178,650 C -100,664 100,664 178,650 C 184,480 192,300 186,200 C 150,178 90,170 46,168 Z"/></clipPath>
-  <clipPath id="cFaceF"><path d="M -82,-60 C -84,10 -72,52 -40,74 C -24,86 -10,90 0,90 C 10,90 24,86 40,74 C 72,52 84,10 82,-60 C 78,-152 -78,-152 -82,-60 Z"/></clipPath></defs>`;
-  const back=pth('M -98,-60 C -110,-170 -60,-206 0,-206 C 64,-206 110,-168 98,-60 C 100,-20 96,10 88,30 L -88,30 C -96,10 -100,-20 -98,-60 Z',HA,OL);
-  const LEG='M -152,606 C -148,820 -138,1060 -132,1400 L -50,1400 C -46,1150 -30,880 -6,640 Z';
-  const legs=pth('M -152,600 L 152,600 L 152,664 L 0,724 L -152,664 Z',JE)+both(LEG,JE,OL)+pth('M -70,640 C -66,900 -62,1150 -58,1400 L -50,1400 C -46,1150 -30,880 -6,640 Z',JES,null,0,'opacity=".8"')+pth('M 70,640 C 66,900 62,1150 58,1400 L 50,1400 C 46,1150 30,880 6,640 Z',JES,null,0,'opacity=".5"')+
-    ln('M -126,1080 C -110,1090 -90,1088 -70,1078',JES,2)+ln('M -122,1110 C -104,1116 -88,1114 -74,1106',JES,1.6)+ln('M 126,1080 C 110,1090 90,1088 70,1078',JES,2)+
-    both('M -134,1372 L -48,1372 L -50,1400 L -132,1400 Z','#4d6390',OL,1.8)+
-    both('M -144,1392 C -160,1410 -162,1446 -148,1462 C -130,1478 -56,1478 -42,1462 C -36,1440 -42,1402 -54,1392 Z',WT,OL)+
-    ln('M -152,1452 C -130,1468 -60,1468 -42,1452','#b9bccb',4)+ln('M -128,1404 L -112,1418 M -120,1398 L -104,1412 M -112,1394 L -96,1408',WTS,2)+ln('M 128,1404 L 112,1418 M 120,1398 L 104,1412 M 112,1394 L 96,1408',WTS,2)+ln('M 152,1452 C 130,1468 60,1468 42,1452','#b9bccb',4);
-  const neck=pth('M -33,30 C -34,90 -36,130 -42,178 L 42,178 C 36,130 34,90 33,30 Z',SK,OL)+pth('M -34,40 L 34,40 L 34,76 C 18,106 -18,106 -34,76 Z',SKS);
-  const SLV='M -150,182 C -196,190 -240,236 -254,302 C -238,318 -214,326 -196,324 C -190,290 -186,250 -176,214 Z';
-  const tee=both(SLV,TE,OL)+pth('M 176,214 C 186,250 190,290 196,324 C 214,326 238,318 254,302 C 246,270 232,244 214,224 Z',TES,null,0,'opacity=".8"')+
-    `<use href="#pTee" fill="${TE}"/><g clip-path="url(#cTee)">
-    <path d="M 90,170 C 140,200 150,400 140,660 L 200,660 L 200,170 Z" fill="${TES}"/>
-    ${ln('M -150,420 C -124,444 -108,480 -104,530',TES,2.2)}${ln('M -60,560 C -40,590 -20,610 6,620',TES,2)}${ln('M 120,300 C 110,340 108,380 112,420',TES,2)}
-    <path d="M 0,368 C -40,340 -44,300 -18,296 C -8,295 -2,302 0,308 C 2,302 8,295 18,296 C 44,300 40,340 0,368 Z" fill="#ff7fb0" stroke="#fff" stroke-width="4"/>
-    <rect x="-56" y="384" width="112" height="10" rx="5" fill="#fff"/><rect x="-38" y="404" width="76" height="7" rx="3.5" fill="#fff" opacity=".85"/>
-    </g><use href="#pTee" fill="none" stroke="${OL}" stroke-width="2.2"/>`+ln('M -46,168 C -30,198 30,198 46,168',TES,8)+pth('M -46,168 C -30,198 30,198 46,168','none',OL,2);
-  const AR=(...segs)=>armSVG(segs,SK,SKS,OL);
-  const armR=AR([[212,300],[232,452],31,27],[[232,452],[214,602],27,20])+pth('M 194,596 C 188,630 194,662 210,677 C 224,688 244,676 247,657 C 249,636 241,612 233,596 Z',SK,OL)+ln('M 210,640 C 212,654 216,664 222,670 M 224,636 C 228,650 232,660 236,664',SKS,1.4);
-  const armL=AR([[-212,300],[-236,452],31,27],[[-236,452],[-66,262],27,19]);
-  const half=`<g transform="translate(0,1470) scale(-0.98039,0.98039) translate(0,-1470)">${pth('M 146,166 C 128,140 80,138 74,182 C 70,200 66,214 58,226 L 72,248 C 92,254 120,264 146,272 C 151,264 149,254 144,249 C 124,233 100,214 100,190 C 100,164 130,160 144,182 C 150,176 150,170 146,166 Z',SK,OL)+
-    pth('M 74,182 C 70,200 66,214 58,226 L 72,248 C 80,246 86,232 88,214 C 90,200 84,186 74,182 Z',SKS,null,0,'opacity=".8"')+ln('M 104,150 C 108,158 110,164 108,172',SKS,1.4)+ln('M 122,146 C 126,154 127,160 126,168',SKS,1.4)+ln('M 90,162 C 96,168 98,176 98,182',SKS,1.4)+ln('M 96,236 C 108,240 122,246 134,254',SKS,1.4)}</g>`;
-  const FACE='M -82,-60 C -84,10 -72,52 -40,74 C -24,86 -10,90 0,90 C 10,90 24,86 40,74 C 72,52 84,10 82,-60 C 78,-152 -78,-152 -82,-60 Z';
-  const head=`<ellipse cx="-82" cy="-6" rx="15" ry="23" fill="${SK}" stroke="${OL}" stroke-width="2"/><ellipse cx="82" cy="-6" rx="15" ry="23" fill="${SK}" stroke="${OL}" stroke-width="2"/>
-    <path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFaceF)"><ellipse cx="0" cy="-70" rx="100" ry="30" fill="${SKS}"/><path d="M 62,-40 C 78,0 72,44 44,74 L 92,96 L 92,-40 Z" fill="${SKS}" opacity=".6"/></g>${pth(FACE,'none',OL)}
-    <ellipse cx="-52" cy="32" rx="22" ry="11" fill="url(#blushF)"/><ellipse cx="52" cy="32" rx="22" ry="11" fill="url(#blushF)"/>
-    ${eyeFan(-37,-22,-1)}${eyeFan(37,-22,1)}
-    ${ln('M 18,-54 C 32,-62 50,-62 64,-54',HA,4.5)}${ln('M -18,-54 C -32,-62 -50,-62 -64,-54',HA,4.5)}
-    ${ln('M 2,20 C 5,26 5,30 1,33','#d09a87',1.6)}
-    ${pth('M -15,48 C -6,54 6,54 15,48 C 10,61 -10,61 -15,48 Z','#c75e6a',OL,1.4)}
-    ${pth('M -100,0 C -116,-120 -66,-204 0,-204 C 70,-204 116,-118 100,0 L 90,-40 Q 86,-62 78,-84 Q 70,-68 62,-60 Q 56,-84 44,-100 Q 36,-82 28,-74 Q 18,-94 4,-104 Q -2,-86 -10,-78 Q -22,-96 -36,-102 Q -40,-82 -48,-74 Q -60,-90 -74,-92 Q -76,-68 -82,-52 Q -88,-30 -94,-6 Z','url(#hairF)',OL)}
-    ${[[-66,-140,-.5],[-36,-156,-.25],[-4,-162,0],[28,-158,.25],[58,-144,.5]].map(([x,y,r])=>`<ellipse cx="${x}" cy="${y}" rx="12" ry="3.2" transform="rotate(${r*40} ${x} ${y})" fill="${HH}" opacity=".9"/>`).join('')}
-    ${ln('M -40,-180 C -50,-140 -46,-110 -48,-80 M 10,-190 C 6,-150 6,-120 4,-104 M 50,-176 C 56,-140 56,-112 44,-100',HA,1.3,.6)}`;
-  const HT='translate(0,16) translate(0,90) scale(1.05) translate(0,-90)';
-  return defs+`<g transform="${HT}">${back}</g>`+legs+neck+tee+armR+armL+half+`<g transform="${HT}">${head}</g>`;
+  GID=500;
+  const OL='#4b4456',SK='#f8dccb',SKS='#e9bca6',SKL='#fff1e8',HA='#3a302d',HA2='#574843',HL='#8a7a74',HD='#f4f2f8',HDS='#d6d1e3',HDD='#b9b2cc',PA='#3d3f4f',PAS='#2c2d3a',LV='#b9a2e8',LVS='#9479cc';
+  const C={base:SK,shd:SKS,light:SKL,OL,sw:2},CS={base:HD,shd:HDS,light:'#ffffff',OL,sw:2};
+  const defs=`<defs><linearGradient id="hairB" x1="0" y1="-210" x2="0" y2="0" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${HA2}"/><stop offset="1" stop-color="${HA}"/></linearGradient>
+  <linearGradient id="irisB" x1="0" y1="-14" x2="0" y2="14" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#22150d"/><stop offset=".5" stop-color="#5c3a26"/><stop offset="1" stop-color="#b47e52"/></linearGradient>
+  <radialGradient id="glowB"><stop offset="0" stop-color="#efe6ff" stop-opacity=".95"/><stop offset=".35" stop-color="#c7b2ff" stop-opacity=".6"/><stop offset="1" stop-color="#b9a2e8" stop-opacity="0"/></radialGradient>
+  <clipPath id="eyeB"><path d="M -18,2 C -13,-14 10,-18 18,-6 C 20,6 13,14 3,15 C -7,16 -15,10 -18,2 Z"/></clipPath>
+  <clipPath id="cFaceB"><path d="M -80,-58 C -82,12 -70,56 -40,80 C -24,92 -10,98 0,98 C 10,98 24,92 40,80 C 70,56 82,12 80,-58 C 76,-150 -76,-150 -80,-58 Z"/></clipPath>
+  <clipPath id="cHood"><path id="pHood" d="M -60,165 C -110,168 -165,182 -192,206 C -200,300 -192,480 -186,640 C -100,656 100,656 186,640 C 192,480 200,300 192,206 C 165,182 110,168 60,165 Z"/></clipPath></defs>`;
+  const back=pth('M -96,-60 C -104,-170 -56,-208 0,-208 C 60,-208 104,-168 96,-60 C 98,-20 92,10 84,26 L -84,26 C -92,10 -98,-20 -96,-60 Z',HA,OL);
+  const LEG='M -170,628 C -160,850 -148,1100 -140,1390 L -52,1390 C -48,1150 -34,900 -6,660 Z';
+  const legs=pth('M -176,600 L 176,600 L 176,660 L 0,720 L -176,660 Z',PA)+both(LEG,PA,OL)+pth('M -78,660 C -72,900 -66,1150 -62,1390 L -52,1390 C -48,1150 -34,900 -6,660 Z',PAS,null,0,'opacity=".8"')+pth('M 78,660 C 72,900 66,1150 62,1390 L 52,1390 C 48,1150 34,900 6,660 Z',PAS,null,0,'opacity=".5"')+
+    ln('M -150,1060 C -130,1072 -106,1070 -84,1060 M -146,1100 C -126,1108 -106,1106 -90,1098',PAS,2)+ln('M 150,1060 C 130,1072 106,1070 84,1060',PAS,2)+
+    both('M -146,1380 C -162,1404 -164,1444 -150,1462 C -132,1478 -58,1478 -44,1462 C -38,1440 -44,1400 -56,1382 Z','#30303c',OL)+
+    ln('M -156,1452 C -132,1470 -60,1470 -42,1452','#f2f2f6',7)+ln('M 156,1452 C 132,1470 60,1470 42,1452','#f2f2f6',7)+
+    ln('M -126,1394 L -104,1406 M -120,1386 L -98,1398 M 126,1394 L 104,1406 M 120,1386 L 98,1398','#e8e8ee',2.2)+`<circle cx="-70" cy="1440" r="8" fill="#f2f2f6" stroke="${OL}" stroke-width="1.4"/><circle cx="70" cy="1440" r="8" fill="#f2f2f6" stroke="${OL}" stroke-width="1.4"/>`;
+  const hood=pth('M -82,168 C -76,128 76,128 82,168 C 60,196 -60,196 -82,168 Z',HDS,OL);
+  const neck=pth('M -32,84 C -33,115 -35,140 -40,172 L 40,172 C 35,140 33,115 32,84 Z',SK,OL)+pth('M -33,92 L 33,92 L 33,110 C 18,134 -18,134 -33,110 Z',SKS);
+  const body=`<use href="#pHood" fill="${HD}"/><g clip-path="url(#cHood)"><path d="M 90,168 C 150,200 156,420 148,660 L 210,660 L 210,168 Z" fill="${HDS}"/>
+    <path d="M -110,500 L 110,500 L 124,612 L -124,612 Z" fill="${HDS}" opacity=".7"/>${ln('M -110,500 L 110,500 M -110,500 L -124,612 M 110,500 L 124,612',HDD,2)}
+    ${ln('M -160,380 C -140,410 -126,440 -122,480 M 130,300 C 124,340 122,380 126,420 M -40,620 C -20,630 20,632 44,622',HDS,2.2)}
+    <rect x="-200" y="618" width="400" height="40" fill="${HDS}"/>${ln('M -200,620 L 200,620',HDD,1.6)}</g><use href="#pHood" fill="none" stroke="${OL}" stroke-width="2"/>`+
+    ln('M -22,186 C -24,230 -26,270 -28,300 M 22,186 C 24,230 26,270 30,296','#efeaf6',3.2)+`<rect x="-32" y="298" width="8" height="16" rx="3" fill="#c9c4d6" stroke="${OL}" stroke-width="1.2"/><rect x="26" y="294" width="8" height="16" rx="3" fill="#c9c4d6" stroke="${OL}" stroke-width="1.2"/>`;
+  const TW='M -80,166 C -70,240 -72,330 -82,424 L -36,428 C -30,330 -30,240 -38,188 Z';
+  const towel=pth('M -80,166 C -50,148 50,148 80,166 C 60,182 -60,182 -80,166 Z',LVS,OL)+both(TW,LV,OL)+pth('M -50,190 C -44,260 -44,340 -48,426 L -36,428 C -30,330 -30,240 -38,188 Z',LVS,null,0,'opacity=".8"')+
+    ln('M -78,430 L -78,442 M -68,430 L -68,444 M -58,430 L -58,444 M -48,430 L -48,442 M 78,430 L 78,442 M 68,430 L 68,444 M 58,430 L 58,444 M 48,430 L 48,442',LVS,2.4)+
+    pth('M -60,300 C -70,290 -68,278 -60,280 C -58,280 -58,282 -58,284 C -58,282 -56,280 -54,280 C -46,278 -48,290 -58,300 Z','#fff',null)+ln('M -66,320 L -50,320 M -67,334 L -52,334 M -68,348 L -54,348','#fff',3.4)+
+    pth('M 58,300 C 48,290 50,278 58,280 C 60,280 60,282 60,284 C 60,282 62,280 64,280 C 72,278 70,290 60,300 Z','#fff',null)+ln('M 52,320 L 68,320 M 52,334 L 66,334 M 52,348 L 66,348','#fff',3.4);
+  // 腕（袖）
+  const S1=[-178,226],E1=[-228,412],W1=[-66,262],S2=[178,226],E2=[236,400],W2=[222,268];
+  const armL=partSVG(S1,E1,[38,35,30],[.03,.06],CS)+partSVG(E1,W1,[30,28,24],[0,.06],CS)+
+    `<g transform="translate(${W1[0]},${W1[1]}) rotate(${f1(Math.atan2(W1[1]-E1[1],W1[0]-E1[0])*180/Math.PI)})"><rect x="-14" y="-24" width="16" height="48" rx="7" fill="${HDS}" stroke="${OL}" stroke-width="1.8"/></g>`+
+    `<g transform="translate(0,1470) scale(-0.98039,0.98039) translate(0,-1470)">${heartHalf(C)}</g>`;
+  const armR=partSVG(S2,E2,[38,35,30],[.06,.03],CS)+
+    `<rect x="214" y="78" width="15" height="150" rx="7" fill="#efe6ff" stroke="${OL}" stroke-width="1.6"/><ellipse cx="221" cy="150" rx="44" ry="96" fill="url(#glowB)"/><rect x="216" y="82" width="5" height="140" rx="2.5" fill="#fff" opacity=".9"/>`+
+    partSVG(E2,W2,[30,28,24],[.06,0],CS)+`<g transform="translate(${W2[0]},${W2[1]}) rotate(${f1(Math.atan2(W2[1]-E2[1],W2[0]-E2[0])*180/Math.PI)})"><rect x="-14" y="-24" width="16" height="48" rx="7" fill="${HDS}" stroke="${OL}" stroke-width="1.8"/></g>`+
+    `<rect x="213" y="222" width="17" height="36" rx="4" fill="#3a3646" stroke="${OL}" stroke-width="1.6"/>`+
+    pth('M 200,262 C 194,240 202,222 222,220 C 242,220 250,236 248,254 C 246,270 232,278 218,276 C 210,276 204,270 200,262 Z',SK,OL)+pth('M 236,224 C 246,232 250,244 248,256 C 246,268 236,276 226,276 C 236,262 240,244 236,224 Z',SKS,null,0,'opacity=".8"')+
+    ln('M 204,240 C 214,238 224,238 232,242 M 202,252 C 212,250 222,250 230,254 M 204,264 C 212,262 220,263 228,266',SKS,1.5)+pth('M 208,236 C 210,226 222,222 230,228 C 230,236 220,240 208,236 Z',SK,OL,1.6);
+  const FACE='M -80,-58 C -82,12 -70,56 -40,80 C -24,92 -10,98 0,98 C 10,98 24,92 40,80 C 70,56 82,12 80,-58 C 76,-150 -76,-150 -80,-58 Z';
+  const head=`<ellipse cx="-80" cy="-6" rx="14" ry="22" fill="${SK}" stroke="${OL}" stroke-width="2"/><ellipse cx="80" cy="-6" rx="14" ry="22" fill="${SK}" stroke="${OL}" stroke-width="2"/>
+    <path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFaceB)"><path d="M -100,-130 L 100,-130 L 100,-66 C 60,-48 -60,-48 -100,-66 Z" fill="${SKS}"/><path d="M 62,-36 C 78,4 72,48 44,80 L 92,100 L 92,-36 Z" fill="${SKS}" opacity=".6"/></g>${pth(FACE,'none',OL)}
+    <ellipse cx="-50" cy="30" rx="20" ry="10" fill="#ff9aa8" opacity=".25"/><ellipse cx="50" cy="30" rx="20" ry="10" fill="#ff9aa8" opacity=".25"/>
+    ${fanEye(-36,-12,-1)}${fanEye(36,-12,1)}
+    ${ln('M 16,-48 C 30,-58 48,-58 62,-50',HA,4.4)}${ln('M -16,-48 C -30,-58 -48,-58 -62,-50',HA,4.4)}
+    ${ln('M 1,22 C 4,28 4,32 0,35','#d09a87',1.5)}
+    ${pth('M -18,50 C -8,58 8,58 18,50 C 14,68 -14,68 -18,50 Z','#c25a66',OL,1.4)}<path d="M -15,51 C -6,56 6,56 15,51 L 14,55 C 6,59 -6,59 -14,55 Z" fill="#fff"/>
+    <circle cx="-37" cy="-12" r="27" fill="#e8f4ff" fill-opacity=".12" stroke="#3b3440" stroke-width="3.2"/><circle cx="37" cy="-12" r="27" fill="#e8f4ff" fill-opacity=".12" stroke="#3b3440" stroke-width="3.2"/>
+    ${ln('M -11,-16 Q 0,-23 11,-16','#3b3440',3)}${ln('M -64,-18 L -82,-22 M 64,-18 L 82,-22','#3b3440',3)}
+    ${ln('M -52,-28 L -40,-38 M -48,-20 L -30,-36 M 22,-28 L 34,-38 M 26,-20 L 44,-36','#fff',2.2,.55)}
+    ${pth('M -98,0 C -112,-120 -64,-208 0,-208 C 66,-208 112,-120 98,0 C 92,-30 88,-62 74,-86 C 60,-104 34,-112 6,-118 C -24,-112 -54,-100 -70,-84 C -86,-66 -92,-34 -98,0 Z','url(#hairB)',OL)}
+    ${ln('M -40,-190 C -60,-150 -72,-110 -80,-60 M 0,-200 C -4,-170 -2,-140 2,-120 M 40,-188 C 58,-150 70,-110 78,-62',HA2,1.4,.6)}
+    <path d="M -64,-150 Q -30,-176 0,-178 Q 34,-176 66,-148 Q 32,-164 0,-166 Q -30,-164 -64,-150 Z" fill="${HL}" opacity=".85"/>`;
+  return defs+`<g transform="translate(0,18)">${back}</g>`+legs+hood+neck+body+towel+armL+armR+`<g transform="translate(0,18)">${head}</g>`;
 }
 const SPRITE_LEVELS=[{vb:[-420,-260,840,1760],res:0.8},{vb:[-320,-260,640,860],res:1.7},{vb:[-115,-225,230,340],res:3.6}];
 const SPR={};
