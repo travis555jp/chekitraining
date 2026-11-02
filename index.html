@@ -241,15 +241,25 @@ const SCN={
    cuts:[{y:-0.18,name:'あご',ok:false},{y:-0.25,name:'首',ok:false},{y:-0.43,name:'胸',ok:true},{y:-0.47,name:'ウエストの上',ok:true},{y:-0.54,name:'腰',ok:false},{y:-0.92,name:'太もも',ok:true},{y:-99,name:'ひざ',ok:false}]}
 };
 function isPair(){return S.mode==='quiz'?!!(S.quiz&&S.quiz.pair):S.shotType==='two'}
-function sceneAt(t){const X0=S.mode==='quiz'&&S.quiz?S.quiz.X:0,mt=sceneMeta(),x=X0+0.01*Math.sin(t*1.3),bob=0.005*Math.sin(t*2.1);
+function sceneAt(t){const X0=S.mode==='quiz'&&S.quiz?S.quiz.X:0,mt=sceneMeta(),x=X0+0.005*Math.sin(t*1.3),bob=0.004*Math.sin(t*2.1);
   return{mt,x,bob,subs:mt.subs.map(s=>({x:x+s.dx,top:s.top+bob,eye:s.eye+bob,head:s.head})),hands:mt.hands.map(h=>[x+h[0],x+h[1],h[2]+bob])}}
 const mkC=Lv=>hex=>shade(hex,Lv);
 /* ---------- 人物イラスト（SVGで描いて高解像度のスプライトに焼き込む。単位mm・原点＝人物中心のカメラ高さ・y下向き） ---------- */
 const SPR={};
 function getSprite(key){if(SPR[key])return SPR[key];const mt=SCN[key],sp={mt,levels:[]};SPR[key]=sp;
   const img=new Image();img.onload=()=>{const W0=img.naturalWidth,H0=img.naturalHeight;
-    for(const f of[0.25,0.5,1]){const cv=document.createElement('canvas');cv.width=Math.round(W0*f);cv.height=Math.round(H0*f);const x=cv.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,cv.width,cv.height);sp.levels.push({cv,f,res:mt.pxm*f/1000})}};
+    for(const f of[0.25,0.5,1]){const cv=document.createElement('canvas');cv.width=Math.round(W0*f);cv.height=Math.round(H0*f);const x=cv.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,cv.width,cv.height);sp.levels.push({cv,f,res:mt.pxm*f/1000})}
+    try{const f=1/8,w=Math.round(W0*f),h=Math.round(H0*f),cv=document.createElement('canvas');cv.width=w;cv.height=h;const x=cv.getContext('2d');x.drawImage(img,0,0,w,h);
+      const d=x.getImageData(0,0,w,h).data,I=new Float64Array((w+1)*(h+1)),IX=new Float64Array((w+1)*(h+1));
+      for(let j=0;j<h;j++){let r=0,rx=0;for(let i=0;i<w;i++){const a=d[(j*w+i)*4+3]/255;r+=a;rx+=a*(i+0.5);const k=(j+1)*(w+1)+i+1;I[k]=I[k-w-1]+r;IX[k]=IX[k-w-1]+rx}}
+      sp.mass={w,h,f,I,IX}}catch(e){}};
   img.src=mt.src;return sp}
+/* 写っている範囲（素材基準のm座標）の中にある人物シルエットの左右の重心。求められなければnull */
+function massCenter(key,x0,x1,y0,y1){const sp=SPR[key];if(!sp||!sp.mass)return null;const{w,h,f,I,IX}=sp.mass,mt=sp.mt,s=mt.pxm*f;
+  const cx=v=>Math.max(0,Math.min(w,Math.round(mt.ox*f+v*s))),cy=v=>Math.max(0,Math.min(h,Math.round(mt.oy*f-v*s)));
+  const a=cx(x0),b=cx(x1),c=cy(y1),d=cy(y0);if(b<=a||d<=c)return null;
+  const q=(A,i0,i1,j0,j1)=>A[j1*(w+1)+i1]-A[j0*(w+1)+i1]-A[j1*(w+1)+i0]+A[j0*(w+1)+i0];
+  const m=q(I,a,b,c,d);if(m<20)return null;return(q(IX,a,b,c,d)/m-mt.ox*f)/s}
 const tmpC=document.createElement('canvas'),tmpX=tmpC.getContext('2d');
 function drawSprite(ctx,W,H,sp,ox,oy,sc,Lp){ // sc＝画面上の1mmあたりpx
   if(!sp.levels.length)return;const mt=sp.mt,lv=sp.levels.find(l=>l.res>=sc*0.9)||sp.levels[sp.levels.length-1],k=sc/lv.res;
@@ -424,6 +434,8 @@ function drawMarks(){
       mctx.shadowBlur=lw*2;mctx.strokeStyle='#f2a33a';mctx.lineWidth=lw*1.2;const y=J.eye*H;
       mctx.beginPath();mctx.moveTo(0,y);mctx.lineTo(W*.16,y);mctx.moveTo(W*.84,y);mctx.lineTo(W,y);mctx.stroke();
       mctx.fillStyle='#f2a33a';mctx.textBaseline='bottom';mctx.fillText('目線',W*.02,y-lw);
+      {const x=J.cx*W;mctx.fillStyle='#f2a33a';mctx.beginPath();mctx.moveTo(x,H*.885);mctx.lineTo(x-W*.03,H*.92);mctx.lineTo(x+W*.03,H*.92);mctx.closePath();mctx.fill();
+        mctx.strokeStyle='rgba(255,255,255,.8)';mctx.lineWidth=lw*.8;mctx.beginPath();mctx.moveTo(W/2,H*.875);mctx.lineTo(W/2,H*.93);mctx.stroke()}
       if(J.hand){mctx.strokeStyle='#e8755e';mctx.lineWidth=lw;mctx.beginPath();mctx.arc(J.hand[0]*W,J.hand[1]*H,W*.09,0,7);mctx.stroke()}
       mctx.fillStyle=J.cut.ok?'#9fe0ad':'#ff9a85';mctx.textBaseline='bottom';
       mctx.fillText(`下端：${J.cut.txt||J.cut.name+'で切れ'} ${J.cut.ok?'○':J.cut.soft?'△':'×'}`,W*.04,H*.97);
@@ -449,9 +461,12 @@ function judge(sh){
     else if(head<lo)items.push({bad:true,t:`頭上が詰まって（${pct(Math.max(0,head))}）窮屈に見えます。ほんの少しだけ下げる。`});
     else items.push({t:`目線が上から${pct(eye)}。${onThird?'上1/3のラインに乗っていて安定感があります。':'頭上の余白とのバランスが取れています。'}`})}
   // 左右
-  const cx=subs.reduce((a,s)=>a+s.x,0)/subs.length,dx=fromLeft(cx)-0.5,ax=Math.abs(dx);
-  const sX=Math.round(20*Math.max(0,Math.min(1,1-(ax-0.03)/0.17)));
-  if(ax>0.04)items.push({bad:true,t:`${pair?'2人の真ん中':'顔'}が写真の${dx>0?'右':'左'}寄り（中心から${pct(ax)}）で左右の余白が不均等。ファインダーでは${pair?'2人':'顔'}を少し${dx>0?'左':'右'}に置く。`});
+  const mc=massCenter(pair?'pair':'solo',(sh.au-g.Lx)*D-sn.x,(sh.au+g.Lx)*D-sn.x,(sh.av+g.Ly)*D-sn.bob,(sh.av-g.Ly)*D-sn.bob);
+  const cx=mc!=null?sn.x+mc:subs.reduce((a,s)=>a+s.x,0)/subs.length,dx=fromLeft(cx)-0.5,ax=Math.abs(dx);
+  const sX=Math.round(20*Math.max(0,Math.min(1,1-(ax-0.05)/0.17)));
+  const who=pair?'2人':'人物';
+  if(ax>0.05)items.push({bad:true,t:`${who}が写真の${dx>0?'右':'左'}寄り（中心から${pct(ax)}）で左右の余白が不均等。ファインダーでは${who}を少し${dx>0?'左':'右'}に置く。`});
+  else items.push({t:`左右の余白はほぼ均等です（中心から${pct(ax)}）。`});
   // 切れ位置（アイドル基準）
   const yb=(-g.Ly+sh.av)*D-sn.bob,cut=Object.assign({},sn.mt.cuts.find(c=>yb>=c.y));let sC;
   if(cut.ok){sC=15;items.push({t:`下端は${cut.name}で切れていて自然です。`})}
@@ -477,8 +492,8 @@ function judge(sh){
   else if(sh.Lsub<.62)sE=7;
   // ひとこと
   const comp=sV+sX+sC+sS,good=comp>=72;
-  const summary=`${fr.label}｜目線 上から${pct(Math.max(0,eye))}・${cut.txt||'下端は'+cut.name}・左右${ax<=0.04?'均等':'ずれ'}　→　${good?'構図のバランスが取れています':comp>=50?'バランスにもう一工夫':'バランスが崩れています'}`;
-  return{score:Math.max(0,comp+sF+sE),items,summary,eye,eyeBand,cut,hand,
+  const summary=`${fr.label}｜目線 上から${pct(Math.max(0,eye))}・${cut.txt||'下端は'+cut.name}・左右${ax<=0.05?'均等':'ずれ'}　→　${good?'構図のバランスが取れています':comp>=50?'バランスにもう一工夫':'バランスが崩れています'}`;
+  return{score:Math.max(0,comp+sF+sE),items,summary,eye,eyeBand,cut,hand,cx:dx+0.5,
     parts:[['上下',sV,30],['左右',sX,20],['切れ位置',sC,15],['画面',sS,15],['ピント',sF,10],['明るさ',sE,10]]};
 }
 function renderVerdict(){
