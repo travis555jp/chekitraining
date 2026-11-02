@@ -209,7 +209,7 @@ function geom(D=curD()){
   return{m,fm,Lx,Ly,pu,pv,cov:c.cov,bx:c.bx/1000,by:c.by/1000,corr,D};
 }
 /* 構図：人物の高さ（m、カメラ高=0）と写り方の分類 */
-const BODY={top:0.204,face:0.02,knee:-1.15,feet:-1.47};
+const BODY={top:0.214,face:0.02,knee:-1.15,feet:-1.47};
 const FRAMES=[
  {k:'face',label:'顔アップ',minY:-0.22,hr:[0.01,0.06],task:'頭上の余白は少なめ'},
  {k:'bust',label:'バストアップ',minY:-0.42,hr:[0.02,0.08],task:'頭上の余白は少なめ・顔は上寄り'},
@@ -230,163 +230,248 @@ function shade(h,b){const c=rgb(h).map(v=>b<=1?v*b:1-(1-v)/Math.pow(b,1.6));retu
 
 /* ---------- 練習シーン（アニメ調） ---------- */
 const FEET=1.47;
-const KIND={idol:{top:0.204,eye:0.018,head:0.11},fan:{top:0.201,eye:0.022,head:0.104}};
+const KIND={idol:{top:0.214,eye:0.002,head:0.12},fan:{top:0.205,eye:0.012,head:0.105}};
 function isPair(){return S.mode==='quiz'?!!(S.quiz&&S.quiz.pair):S.shotType==='two'}
 function subjectsAt(t){
   const X0=S.mode==='quiz'&&S.quiz?S.quiz.X:0;
-  if(!isPair())return[{x:X0+0.012*Math.sin(t*1.3),bob:0.006*Math.sin(t*2.1),s:1,kind:'idol',pose:'peace',tilt:0.04*Math.sin(t*0.9)}];
-  return[{x:X0-0.14+0.008*Math.sin(t*1.3),bob:0.005*Math.sin(t*2.1),s:1,kind:'idol',pose:'pairPeace',tilt:0.13},
-         {x:X0+0.15+0.008*Math.sin(t*1.3+1),bob:0.004*Math.sin(t*1.7+.5),s:1.02,kind:'fan',pose:'heart',tilt:-0.07}];
+  if(!isPair())return[{x:X0+0.012*Math.sin(t*1.3),bob:0.006*Math.sin(t*2.1),s:1,kind:'idol',pose:'peace'}];
+  const dx=0.008*Math.sin(t*1.3),bob=0.005*Math.sin(t*2.1);
+  return[{x:X0-0.14+dx,bob,s:1,kind:'idol',pose:'pairPeace'},{x:X0+0.15+dx,bob,s:1.02,kind:'fan',pose:'heart'}];
 }
 const wY=(Y,sub)=>(Y+FEET)*sub.s-FEET+sub.bob; // 体の基準高さ→ワールド高さ
 const mkC=Lv=>hex=>shade(hex,Lv);
-function ofill(ctx,p,fill,OL,lw){ctx.fillStyle=fill;p?ctx.fill(p):ctx.fill();if(OL){ctx.strokeStyle=OL;ctx.lineWidth=lw;p?ctx.stroke(p):ctx.stroke()}}
-function limb(ctx,pts,w,fill,OL,lw){ctx.beginPath();ctx.moveTo(pts[0][0],pts[0][1]);
-  if(pts.length===3)ctx.quadraticCurveTo(2*pts[1][0]-(pts[0][0]+pts[2][0])/2,2*pts[1][1]-(pts[0][1]+pts[2][1])/2,pts[2][0],pts[2][1]);else for(let i=1;i<pts.length;i++)ctx.lineTo(pts[i][0],pts[i][1]);
-  ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=OL;ctx.lineWidth=w+lw*2;ctx.stroke();ctx.strokeStyle=fill;ctx.lineWidth=w;ctx.stroke()}
-function eye(ctx,c,ex,ey,sd,o){
-  const rx=o.rx,ry=o.ry,lt=o.lash,out=ex+sd*rx*1.12,inn=ex-sd*rx,lc=c(o.lashC||'#2a1620'),ir=o.iris;
-  ctx.save();ctx.beginPath();ctx.moveTo(inn,ey-ry*0.35+lt*0.6);ctx.quadraticCurveTo(ex,ey-ry*1.55+lt*1.6,out,ey-ry*0.5+lt);ctx.lineTo(out,ey+ry*1.3);ctx.lineTo(inn,ey+ry*1.3);ctx.closePath();ctx.clip();
-  ctx.beginPath();ctx.ellipse(ex,ey,rx,ry,0,0,7);ctx.fillStyle=c('#fffdfb');ctx.fill();
-  const ix=ex+sd*0.0008,iy=ey+ry*0.1,irx=rx*0.78,iry=ry*0.95;
-  const g=ctx.createLinearGradient(0,iy-iry,0,iy+iry);g.addColorStop(0,c(ir[0]));g.addColorStop(.42,c(ir[1]));g.addColorStop(.82,c(ir[2]));g.addColorStop(1,c(ir[3]||ir[2]));
-  ctx.beginPath();ctx.ellipse(ix,iy,irx,iry,0,0,7);ctx.fillStyle=g;ctx.fill();
-  if(o.big){const rg=ctx.createRadialGradient(ix,iy+iry*0.55,0,ix,iy+iry*0.55,iry*0.8);rg.addColorStop(0,'rgba(255,240,250,.55)');rg.addColorStop(1,'rgba(255,240,250,0)');ctx.fillStyle=rg;ctx.beginPath();ctx.ellipse(ix,iy,irx,iry,0,0,7);ctx.fill();
-    ctx.strokeStyle=c(ir[0]);ctx.lineWidth=rx*0.07;ctx.stroke()}
-  ctx.beginPath();ctx.ellipse(ix,iy-iry*0.05,irx*0.4,iry*0.46,0,0,7);ctx.fillStyle=c(ir[0]);ctx.fill();
-  ctx.fillStyle='rgba(255,255,255,.97)';
-  ctx.beginPath();ctx.ellipse(ex-rx*0.3,ey-ry*0.3,rx*0.3,ry*0.24,-0.4,0,7);ctx.fill();
-  ctx.beginPath();ctx.arc(ex+rx*0.34,ey+ry*0.42,rx*0.13,0,7);ctx.fill();
-  if(o.big){ctx.beginPath();ctx.arc(ex-rx*0.05,ey+ry*0.62,rx*0.07,0,7);ctx.fill();
-    const sx=ex+rx*0.3,sy=ey-ry*0.36,r=rx*0.15;ctx.beginPath();ctx.moveTo(sx,sy-r);ctx.quadraticCurveTo(sx,sy,sx+r,sy);ctx.quadraticCurveTo(sx,sy,sx,sy+r);ctx.quadraticCurveTo(sx,sy,sx-r,sy);ctx.quadraticCurveTo(sx,sy,sx,sy-r);ctx.fill()}
-  ctx.restore();
-  ctx.beginPath();ctx.moveTo(inn,ey-ry*0.35);ctx.quadraticCurveTo(ex,ey-ry*1.55,out,ey-ry*0.5);
-  if(o.flick)ctx.lineTo(out+sd*rx*0.42,ey-ry*0.82);
-  ctx.lineTo(out,ey-ry*0.5+lt);ctx.quadraticCurveTo(ex,ey-ry*1.55+lt*1.6,inn,ey-ry*0.35+lt*0.6);ctx.closePath();ctx.fillStyle=lc;ctx.fill();
-  if(o.big){for(const[a,l]of[[0.62,0.32],[0.82,0.26]]){const bx=inn+(out-inn)*a,by=ey-ry*(0.35+(1.0-0.35)*Math.sin(Math.PI*a))-ry*0.25;
-      ctx.beginPath();ctx.moveTo(bx-sd*rx*0.08,by+ry*0.12);ctx.lineTo(bx+sd*rx*l,by-ry*0.22);ctx.lineTo(bx+sd*rx*0.1,by+ry*0.16);ctx.closePath();ctx.fill()}
-    ctx.beginPath();ctx.moveTo(inn+sd*rx*0.25,ey-ry*1.2);ctx.quadraticCurveTo(ex,ey-ry*1.72,out-sd*rx*0.05,ey-ry*0.98);ctx.globalAlpha=.4;ctx.strokeStyle=lc;ctx.lineWidth=0.0014;ctx.stroke();ctx.globalAlpha=1}
-  ctx.beginPath();ctx.moveTo(out-sd*rx*0.15,ey+ry*0.62);ctx.quadraticCurveTo(ex,ey+ry*1.1,inn+sd*rx*0.35,ey+ry*0.82);ctx.globalAlpha=.45;ctx.strokeStyle=lc;ctx.lineWidth=0.0015;ctx.stroke();ctx.globalAlpha=1;
+/* ---------- 人物イラスト（SVGで描いて高解像度のスプライトに焼き込む。単位mm・原点＝人物中心のカメラ高さ・y下向き） ---------- */
+function mir(d){let i=0;return d.replace(/-?\d*\.?\d+/g,m=>(i++%2===0)?String(-parseFloat(m)):m)}
+const f1=n=>(+n).toFixed(1);
+function limbD(a,b,ra,rb,bul=0.1){
+  const dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy),ux=dx/Ln,uy=dy/Ln,px=-uy,py=ux,rm=Math.max(ra,rb)*(1+bul),k=1.33;
+  const A1=[a[0]+px*ra,a[1]+py*ra],B1=[b[0]+px*rb,b[1]+py*rb],B2=[b[0]-px*rb,b[1]-py*rb],A2=[a[0]-px*ra,a[1]-py*ra];
+  const c1=[a[0]+ux*Ln*.33+px*rm,a[1]+uy*Ln*.33+py*rm],c2=[b[0]-ux*Ln*.33+px*rb*1.04,b[1]-uy*Ln*.33+py*rb*1.04];
+  const c3=[b[0]-ux*Ln*.33-px*rb*1.04,b[1]-uy*Ln*.33-py*rb*1.04],c4=[a[0]+ux*Ln*.33-px*rm,a[1]+uy*Ln*.33-py*rm];
+  const P=p=>f1(p[0])+','+f1(p[1]);
+  return `M${P(A1)} C${P(c1)} ${P(c2)} ${P(B1)} C${P([B1[0]+ux*rb*k,B1[1]+uy*rb*k])} ${P([B2[0]+ux*rb*k,B2[1]+uy*rb*k])} ${P(B2)} C${P(c3)} ${P(c4)} ${P(A2)} C${P([A2[0]-ux*ra*k,A2[1]-uy*ra*k])} ${P([A1[0]-ux*ra*k,A1[1]-uy*ra*k])} ${P(A1)} Z`;
 }
-function blush(ctx,c,x,y,w){const col=c('#ff7fa8'),rg=ctx.createRadialGradient(0,0,0,0,0,w);rg.addColorStop(0,col.replace('rgb(','rgba(').replace(')',',.55)'));rg.addColorStop(1,col.replace('rgb(','rgba(').replace(')',',0)'));
-  ctx.save();ctx.translate(x,y);ctx.scale(1,0.55);ctx.fillStyle=rg;ctx.beginPath();ctx.arc(0,0,w,0,7);ctx.fill();ctx.restore()}
-function peaceHand(ctx,x,y,skin,skinS,OL,lw){
-  limb(ctx,[[x-0.006,y-0.006],[x-0.021,y-0.066]],0.014,skin,OL,lw);
-  limb(ctx,[[x+0.007,y-0.006],[x+0.012,y-0.07]],0.014,skin,OL,lw);
-  ctx.beginPath();ctx.ellipse(x,y+0.006,0.026,0.028,0,0,7);ofill(ctx,null,skin,OL,lw);
-  ctx.beginPath();ctx.moveTo(x-0.016,y+0.004);ctx.quadraticCurveTo(x,y+0.014,x+0.017,y+0.004);ctx.strokeStyle=skinS;ctx.lineWidth=lw*.8;ctx.stroke();
+let GID=0;
+function limbSVG(a,b,ra,rb,base,shd,OL,bul){
+  const d=limbD(a,b,ra,rb,bul),dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy);let px=-dy/Ln,py=dx/Ln;if(px<0){px=-px;py=-py}
+  const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],r=Math.max(ra,rb)*1.15,id='lg'+(GID++);
+  return `<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(m[0]-px*r)}" y1="${f1(m[1]-py*r)}" x2="${f1(m[0]+px*r)}" y2="${f1(m[1]+py*r)}"><stop offset="0" stop-color="${base}"/><stop offset=".58" stop-color="${base}"/><stop offset=".62" stop-color="${shd}"/><stop offset="1" stop-color="${shd}"/></linearGradient><path d="${d}" fill="url(#${id})" stroke="${OL}" stroke-width="2.2" stroke-linejoin="round"/>`;
 }
-function hairGrad(ctx,c,y0,y1){const g=ctx.createLinearGradient(0,y0,0,y1);g.addColorStop(0,c('#93553c'));g.addColorStop(.5,c('#713e2c'));g.addColorStop(1,c('#55301f'));return g}
-function idolHead(ctx,c,OL,lw){
-  const hairS=c('#4f281c'),hairH=c('#d39a78'),skin=c('#fee7da'),skinS=c('#f5cbb8'),pink=c('#ff9cc6'),pinkD=c('#e2609a'),hg=hairGrad(ctx,c,-0.2,0.1);
-  // ふんわり丸い輪郭
-  const face=new Path2D();face.moveTo(-0.077,-0.06);face.bezierCurveTo(-0.081,0.03,-0.046,0.074,0,0.082);face.bezierCurveTo(0.046,0.074,0.081,0.03,0.077,-0.06);face.bezierCurveTo(0.073,-0.14,-0.073,-0.14,-0.077,-0.06);face.closePath();
-  ctx.fillStyle=skin;ctx.fill(face);ctx.save();ctx.clip(face);ctx.fillStyle=skinS;ctx.beginPath();ctx.ellipse(0,-0.058,0.095,0.03,0,0,7);ctx.fill();ctx.globalAlpha=.6;ctx.beginPath();ctx.ellipse(0.088,0.005,0.02,0.1,0,0,7);ctx.fill();ctx.globalAlpha=1;ctx.restore();
-  ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(face);
-  for(const sd of[-1,1])blush(ctx,c,sd*0.05,0.028,0.026);
-  ctx.strokeStyle=c('#f27a9b');ctx.lineWidth=0.001;for(const sd of[-1,1])for(let i=0;i<3;i++){const x=sd*0.05+(i-1)*0.007;ctx.beginPath();ctx.moveTo(x+0.0025,0.023);ctx.lineTo(x-0.0015,0.031);ctx.stroke()}
-  for(const sd of[-1,1])eye(ctx,c,sd*0.036,-0.012,sd,{rx:0.024,ry:0.028,lash:0.006,flick:true,big:true,iris:['#3a1446','#a04a9e','#ff9ed2','#ffe0f1'],lashC:'#3a1c26'});
-  ctx.fillStyle=c('#e3a291');ctx.beginPath();ctx.arc(0.002,0.026,0.0018,0,7);ctx.fill();
-  ctx.beginPath();ctx.moveTo(-0.009,0.045);ctx.quadraticCurveTo(0,0.048,0.009,0.045);ctx.quadraticCurveTo(0.001,0.063,-0.009,0.045);ctx.closePath();ofill(ctx,null,c('#d4566c'),OL,lw*.6);
-  ctx.beginPath();ctx.ellipse(0.0008,0.0555,0.0048,0.003,0,0,7);ctx.fillStyle=c('#ff9fac');ctx.fill();
-  // 横髪（ゆるく内巻き）
-  for(const sd of[-1,1]){const p=new Path2D();p.moveTo(sd*0.07,-0.085);p.bezierCurveTo(sd*0.1,-0.02,sd*0.104,0.06,sd*0.088,0.108);p.quadraticCurveTo(sd*0.08,0.118,sd*0.07,0.1);p.quadraticCurveTo(sd*0.076,0.04,sd*0.058,-0.02);p.closePath();ofill(ctx,p,hg,OL,lw);
-    ctx.strokeStyle=hairS;ctx.lineWidth=0.0014;ctx.beginPath();ctx.moveTo(sd*0.072,-0.04);ctx.quadraticCurveTo(sd*0.088,0.03,sd*0.08,0.09);ctx.stroke()}
-  // 前髪（細い毛束）
-  const bang=new Path2D();bang.moveTo(-0.092,0.03);bang.bezierCurveTo(-0.108,-0.12,-0.066,-0.186,0,-0.186);bang.bezierCurveTo(0.066,-0.186,0.108,-0.12,0.092,0.03);
-  const tips=[[0.078,-0.004],[0.068,-0.058],[0.057,-0.03],[0.046,-0.064],[0.034,-0.036],[0.022,-0.07],[0.01,-0.04],[-0.002,-0.074],[-0.014,-0.042],[-0.027,-0.07],[-0.04,-0.034],[-0.052,-0.066],[-0.063,-0.03],[-0.071,-0.058],[-0.078,-0.004]];
-  let px=0.092,py=0.03;for(const[x,y]of tips){bang.quadraticCurveTo((px+x)/2,Math.min(py,y)-0.003,x,y);px=x;py=y}bang.closePath();
-  ctx.fillStyle=hg;ctx.fill(bang);ctx.save();ctx.clip(bang);
-  ctx.fillStyle=hairS;ctx.globalAlpha=.5;ctx.beginPath();ctx.ellipse(0,-0.028,0.12,0.03,0,0,7);ctx.fill();ctx.globalAlpha=1;
-  ctx.fillStyle=hairH;ctx.globalAlpha=.5;ctx.beginPath();ctx.moveTo(-0.074,-0.122);ctx.quadraticCurveTo(0,-0.16,0.074,-0.122);ctx.lineTo(0.068,-0.113);ctx.quadraticCurveTo(0,-0.148,-0.068,-0.113);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
-  ctx.fillStyle='rgba(255,255,255,.7)';for(const x of[-0.04,0.012,0.05]){ctx.beginPath();ctx.ellipse(x,-0.128-Math.abs(x)*-0.1,0.006,0.0025,x*3,0,7);ctx.fill()}
-  ctx.strokeStyle=hairS;ctx.globalAlpha=.45;ctx.lineWidth=0.0011;for(const[x,y]of tips.filter((_,i)=>i%2===0)){ctx.beginPath();ctx.moveTo(x*0.5,-0.1);ctx.quadraticCurveTo(x*0.92,-0.07,x,y-0.003);ctx.stroke()}ctx.globalAlpha=1;
-  ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(bang);
-  // アホ毛
-  const ah=new Path2D();ah.moveTo(-0.004,-0.183);ah.bezierCurveTo(0.004,-0.23,0.05,-0.236,0.046,-0.207);ah.bezierCurveTo(0.036,-0.222,0.016,-0.212,0.008,-0.184);ah.closePath();ofill(ctx,ah,hg,OL,lw);
-  // リボン
-  for(const[rx,ry,ang,ox,oy]of[[0.034,0.019,-0.45,0.104,-0.17],[0.03,0.018,0.55,0.05,-0.17]]){ctx.beginPath();ctx.ellipse(ox,oy,rx,ry,ang,0,7);ofill(ctx,null,pink,OL,lw);
-    ctx.beginPath();ctx.ellipse(ox+(ox>0.08?0.006:-0.006),oy-0.003,rx*0.5,ry*0.4,ang,0,7);ctx.fillStyle='rgba(255,255,255,.35)';ctx.fill()}
-  ctx.beginPath();ctx.arc(0.077,-0.166,0.011,0,7);ofill(ctx,null,pinkD,OL,lw);
+function armSVG(segs,base,shd,OL){ // 複数の部位を1つのシルエットとして描く（外側だけに線）
+  let g='',o='',f='';for(const[a,b,ra,rb]of segs){const d=limbD(a,b,ra,rb,.12),dx=b[0]-a[0],dy=b[1]-a[1],Ln=Math.hypot(dx,dy);let px=-dy/Ln,py=dx/Ln;if(px<0){px=-px;py=-py}
+    const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],r=Math.max(ra,rb)*1.15,id='lg'+(GID++);
+    g+=`<linearGradient id="${id}" gradientUnits="userSpaceOnUse" x1="${f1(m[0]-px*r)}" y1="${f1(m[1]-py*r)}" x2="${f1(m[0]+px*r)}" y2="${f1(m[1]+py*r)}"><stop offset="0" stop-color="${base}"/><stop offset=".58" stop-color="${base}"/><stop offset=".62" stop-color="${shd}"/><stop offset="1" stop-color="${shd}"/></linearGradient>`;
+    o+=`<path d="${d}" fill="${OL}" stroke="${OL}" stroke-width="4.4" stroke-linejoin="round"/>`;f+=`<path d="${d}" fill="url(#${id})"/>`}
+  const j=segs[0][1],a=segs[0][0],c=segs[1][1];const v1=[a[0]-j[0],a[1]-j[1]],v2=[c[0]-j[0],c[1]-j[1]],n1=Math.hypot(...v1),n2=Math.hypot(...v2),bx=v1[0]/n1+v2[0]/n2,by=v1[1]/n1+v2[1]/n2,bn=Math.hypot(bx,by)||1,r=segs[0][3]*0.75;
+  const cx=j[0]+bx/bn*r,cy=j[1]+by/bn*r;
+  return g+o+f+ln(`M ${f1(cx-by/bn*6)},${f1(cy+bx/bn*6)} Q ${f1(cx+bx/bn*3)},${f1(cy+by/bn*3)} ${f1(cx+by/bn*6)},${f1(cy-bx/bn*6)}`,shd,1.6,.9);
 }
-function fanHead(ctx,c,OL,lw){
-  const hairH=c('#6a6a80'),skin=c('#f8ddcb'),skinS=c('#eac2ad'),hg=(()=>{const g=ctx.createLinearGradient(0,-0.2,0,0.0);g.addColorStop(0,c('#3a3846'));g.addColorStop(1,c('#1f1e27'));return g})();
-  for(const sd of[-1,1]){ctx.beginPath();ctx.ellipse(sd*0.081,-0.004,0.014,0.022,0,0,7);ofill(ctx,null,skin,OL,lw)}
-  const face=new Path2D();face.moveTo(-0.08,-0.06);face.bezierCurveTo(-0.083,0.03,-0.05,0.078,0,0.09);face.bezierCurveTo(0.05,0.078,0.083,0.03,0.08,-0.06);face.bezierCurveTo(0.076,-0.15,-0.076,-0.15,-0.08,-0.06);face.closePath();
-  ctx.fillStyle=skin;ctx.fill(face);ctx.save();ctx.clip(face);ctx.fillStyle=skinS;ctx.beginPath();ctx.ellipse(0,-0.072,0.1,0.028,0,0,7);ctx.fill();ctx.globalAlpha=.6;ctx.beginPath();ctx.ellipse(0.09,0.0,0.02,0.1,0,0,7);ctx.fill();ctx.globalAlpha=1;ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(face);
-  for(const sd of[-1,1])blush(ctx,c,sd*0.052,0.03,0.018);
-  for(const sd of[-1,1])eye(ctx,c,sd*0.036,-0.016,sd,{rx:0.019,ry:0.019,lash:0.0042,flick:false,iris:['#24170f','#5a3826','#a77450'],lashC:'#26191b'});
-  ctx.strokeStyle=c('#33303d');ctx.lineWidth=0.0038;for(const sd of[-1,1]){ctx.beginPath();ctx.moveTo(sd*0.018,-0.05);ctx.quadraticCurveTo(sd*0.037,-0.057,sd*0.055,-0.051);ctx.stroke()}
-  ctx.fillStyle=c('#d9a592');ctx.beginPath();ctx.arc(0.002,0.026,0.0018,0,7);ctx.fill();
-  ctx.beginPath();ctx.moveTo(-0.015,0.048);ctx.quadraticCurveTo(0,0.052,0.015,0.048);ctx.quadraticCurveTo(0.001,0.064,-0.015,0.048);ctx.closePath();ofill(ctx,null,c('#c75a66'),OL,lw*.6);
-  const hp=new Path2D();hp.moveTo(-0.094,0.0);hp.bezierCurveTo(-0.114,-0.13,-0.064,-0.194,0,-0.194);hp.bezierCurveTo(0.072,-0.194,0.114,-0.12,0.094,0.0);
-  let px=0.094,py=0;for(const[x,y]of[[0.084,-0.05],[0.066,-0.086],[0.05,-0.064],[0.03,-0.094],[0.01,-0.07],[-0.012,-0.096],[-0.034,-0.07],[-0.056,-0.09],[-0.074,-0.062],[-0.086,-0.04]]){hp.quadraticCurveTo((px+x)/2+0.003,Math.min(py,y)-0.006,x,y);px=x;py=y}hp.closePath();
-  ctx.fillStyle=hg;ctx.fill(hp);ctx.save();ctx.clip(hp);ctx.fillStyle=hairH;ctx.globalAlpha=.8;ctx.beginPath();ctx.moveTo(-0.07,-0.13);ctx.quadraticCurveTo(0,-0.168,0.07,-0.13);ctx.lineTo(0.064,-0.118);ctx.quadraticCurveTo(0,-0.152,-0.064,-0.118);ctx.closePath();ctx.fill();ctx.globalAlpha=1;ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(hp);
+const pth=(d,fill,OL,sw=2.2,extra='')=>`<path d="${d}" fill="${fill}"${OL?` stroke="${OL}" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"`:''} ${extra}/>`;
+const both=(d,fill,OL,sw,extra)=>pth(d,fill,OL,sw,extra)+pth(mir(d),fill,OL,sw,extra);
+const ln=(d,col,sw,op=1)=>`<path d="${d}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round" opacity="${op}"/>`;
+
+function eyeIdol(cx,cy,sd){
+  const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#3a1a26';
+  return `<g transform="${T}"><g clip-path="url(#ecI)">
+  <path d="M -24,4 C -19,-22 13,-31 26,-12 C 29,6 22,25 8,29 C -6,31 -20,22 -24,4 Z" fill="#fffdfb"/>
+  <ellipse cx="2" cy="4" rx="17" ry="25" fill="url(#irisI)"/>
+  <ellipse cx="2" cy="-21" rx="28" ry="12" fill="#3a1446" opacity=".35"/>
+  <ellipse cx="2" cy="2" rx="7.5" ry="11.5" fill="#2a0b33"/>
+  <ellipse cx="2" cy="19" rx="12" ry="7" fill="#ffe3f5" opacity=".5"/>
+  <ellipse cx="2" cy="4" rx="17" ry="25" fill="none" stroke="#3a1446" stroke-width="1.4"/>
+  <ellipse cx="-6" cy="-9" rx="7.5" ry="6" transform="rotate(-20 -6 -9)" fill="#fff"/>
+  <circle cx="10" cy="16" r="3.4" fill="#fff"/><circle cx="-1" cy="22" r="1.8" fill="#fff"/>
+  <path d="M 11,-17 Q 11,-12 16,-12 Q 11,-12 11,-7 Q 11,-12 6,-12 Q 11,-12 11,-17 Z" fill="#fff"/>
+  </g>
+  <path d="M -27,7 C -21,-26 14,-36 30,-14 L 37,-21 L 33,-9 C 18,-30 -16,-24 -22,8 Z" fill="${lc}"/>
+  <path d="M 20,-25 L 31,-35 L 25,-20 Z" fill="${lc}"/><path d="M 26,-18 L 38,-26 L 30,-13 Z" fill="${lc}"/>
+  ${ln('M -18,-23 C -6,-35 16,-35 27,-25',lc,1.5,.45)}
+  ${ln('M 24,14 C 18,26 2,32 -12,26',lc,1.6,.5)}${ln('M 24,14 L 28,19',lc,1.4,.5)}
+  </g>`;
 }
-function heartHands(ctx,c){ // 原点＝2人の間（頭の高さ基準）、y=0.2付近にハート
-  const OL=c('#6a3c48'),lw=0.0026,skin=c('#fee7da');
-  for(const sd of[-1,1]){ctx.beginPath();ctx.moveTo(0,0.25);ctx.bezierCurveTo(sd*0.03,0.226,sd*0.062,0.2,sd*0.046,0.168);ctx.bezierCurveTo(sd*0.036,0.148,sd*0.008,0.152,0,0.18);
-    ctx.lineCap='round';ctx.strokeStyle=OL;ctx.lineWidth=0.017+lw*2;ctx.stroke();ctx.strokeStyle=skin;ctx.lineWidth=0.017;ctx.stroke();
-    ctx.beginPath();ctx.ellipse(sd*0.052,0.215,0.024,0.029,0,0,7);ofill(ctx,null,skin,OL,lw)}
+function eyeFan(cx,cy,sd){
+  const T=sd>0?`translate(${cx},${cy})`:`translate(${cx},${cy}) scale(-1,1)`,lc='#2a1d22';
+  return `<g transform="${T}"><g clip-path="url(#ecF)">
+  <path d="M -22,2 C -16,-16 12,-22 22,-8 C 23,6 16,16 4,18 C -8,19 -19,12 -22,2 Z" fill="#fffdfb"/>
+  <ellipse cx="1" cy="1" rx="12.5" ry="16" fill="url(#irisF)"/>
+  <ellipse cx="1" cy="-15" rx="24" ry="9" fill="#24170f" opacity=".35"/>
+  <ellipse cx="1" cy="-1" rx="5.2" ry="7.5" fill="#1c120d"/>
+  <ellipse cx="-4" cy="-6" rx="4.6" ry="3.8" fill="#fff"/><circle cx="6" cy="8" r="2" fill="#fff"/>
+  </g>
+  <path d="M -25,4 C -18,-21 14,-27 26,-8 L 23,-3 C 12,-19 -14,-15 -20,6 Z" fill="${lc}"/>
+  ${ln('M 20,10 C 12,17 0,20 -10,16',lc,1.3,.4)}
+  </g>`;
 }
-function drawIdol(ctx,c,o,t){
-  const OL=c('#6a3c48'),lw=0.0026;ctx.lineJoin='round';ctx.lineCap='round';
-  const hair=hairGrad(ctx,c,-0.12,0.6),hairS=c('#4f281c'),skin=c('#fee7da'),skinS=c('#f5cbb8'),pink=c('#ff9cc6'),pinkS=c('#e57aab'),white=c('#fffaf7'),whiteS=c('#ecdcec'),red=c('#ef5a8c'),shoe=c('#d84a82');
-  const tilt=o.tilt||0,headT=()=>{ctx.translate(0,0.09);ctx.rotate(tilt);ctx.scale(1.06,1.06);ctx.translate(0,-0.09)};
-  for(const sd of[-1,1]){const sw=0.01*Math.sin(t*1.6+sd),p=new Path2D();p.moveTo(sd*0.085,-0.115);p.bezierCurveTo(sd*0.2,-0.11,sd*0.23,0.12,sd*0.18+sw,0.3);p.bezierCurveTo(sd*0.16+sw,0.4,sd*0.21+sw,0.48,sd*0.15+sw,0.57);p.bezierCurveTo(sd*0.13+sw,0.47,sd*0.1,0.32,sd*0.11,0.2);p.bezierCurveTo(sd*0.115,0.06,sd*0.09,-0.03,sd*0.07,-0.07);p.closePath();
-    ctx.fillStyle=hair;ctx.fill(p);ctx.save();ctx.clip(p);ctx.fillStyle=hairS;ctx.beginPath();ctx.ellipse(sd*0.2,0.25,0.05,0.4,sd*0.15,0,7);ctx.fill();ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(p);
-    ctx.beginPath();ctx.ellipse(sd*0.095,-0.11,0.022,0.016,sd*0.4,0,7);ofill(ctx,null,pink,OL,lw)}
-  ctx.save();headT();ctx.beginPath();ctx.ellipse(0,-0.065,0.103,0.122,0,0,7);ofill(ctx,null,hair,OL,lw);ctx.restore();
-  for(const sd of[-1,1]){const x=sd*0.062,p=new Path2D();p.moveTo(x-0.034,0.88);p.lineTo(x-0.027,1.18);p.quadraticCurveTo(x-0.03,1.3,x-0.021,1.42);p.lineTo(x+0.021,1.42);p.quadraticCurveTo(x+0.03,1.3,x+0.027,1.18);p.lineTo(x+0.034,0.88);p.closePath();
-    ctx.fillStyle=skin;ctx.fill(p);ctx.save();ctx.clip(p);ctx.fillStyle=white;ctx.fillRect(x-0.05,1.1,0.1,0.4);ctx.fillStyle=whiteS;ctx.fillRect(x+0.01,1.1,0.03,0.4);ctx.fillStyle=pink;ctx.fillRect(x-0.05,1.1,0.1,0.012);ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(p);
-    ctx.beginPath();ctx.ellipse(x+sd*0.006,1.445,0.046,0.026,0,0,7);ofill(ctx,null,shoe,OL,lw);
-    ctx.beginPath();ctx.ellipse(x-0.012,1.436,0.012,0.006,0,0,7);ctx.fillStyle='rgba(255,255,255,.45)';ctx.fill()}
-  ctx.beginPath();ctx.moveTo(-0.325,0.88);ctx.lineTo(-0.325,0.935);for(let i=0;i<10;i++){const x0=-0.325+i*0.065;ctx.quadraticCurveTo(x0+0.0325,0.985,x0+0.065,0.935)}ctx.lineTo(0.325,0.88);ctx.closePath();ofill(ctx,null,white,OL,lw*.8);
-  const sk=new Path2D();sk.moveTo(-0.125,0.49);sk.bezierCurveTo(-0.2,0.6,-0.3,0.8,-0.335,0.9);for(let i=0;i<8;i++){const x0=-0.335+i*0.08375;sk.quadraticCurveTo(x0+0.042,0.95,x0+0.08375,0.9)}sk.bezierCurveTo(0.3,0.8,0.2,0.6,0.125,0.49);sk.closePath();
-  ctx.fillStyle=pink;ctx.fill(sk);ctx.save();ctx.clip(sk);
-  ctx.fillStyle=pinkS;ctx.globalAlpha=.75;ctx.beginPath();ctx.moveTo(0.04,0.49);ctx.lineTo(0.13,0.49);ctx.lineTo(0.36,0.93);ctx.lineTo(0.15,0.96);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
-  ctx.strokeStyle=pinkS;ctx.lineWidth=0.004;for(let i=-3;i<=3;i++){ctx.beginPath();ctx.moveTo(i*0.03,0.5);ctx.lineTo(i*0.095,0.93);ctx.stroke()}
-  ctx.fillStyle=white;ctx.fillRect(-0.4,0.85,0.8,0.016);ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(sk);
-  ctx.beginPath();ctx.rect(-0.029,0.04,0.058,0.14);ctx.fillStyle=skin;ctx.fill();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.beginPath();ctx.moveTo(-0.029,0.06);ctx.lineTo(-0.029,0.15);ctx.moveTo(0.029,0.06);ctx.lineTo(0.029,0.15);ctx.stroke();
-  ctx.globalAlpha=.55;ctx.beginPath();ctx.ellipse(0,0.088,0.028,0.011,0,0,7);ctx.fillStyle=skinS;ctx.fill();ctx.globalAlpha=1;
-  const bd=new Path2D();bd.moveTo(-0.15,0.16);bd.quadraticCurveTo(0,0.12,0.15,0.16);bd.quadraticCurveTo(0.17,0.32,0.122,0.5);bd.lineTo(-0.122,0.5);bd.quadraticCurveTo(-0.17,0.32,-0.15,0.16);bd.closePath();
-  ctx.fillStyle=pink;ctx.fill(bd);ctx.save();ctx.clip(bd);ctx.fillStyle=pinkS;ctx.globalAlpha=.75;ctx.beginPath();ctx.moveTo(0.07,0.14);ctx.lineTo(0.18,0.16);ctx.lineTo(0.14,0.5);ctx.lineTo(0.08,0.5);ctx.closePath();ctx.fill();ctx.globalAlpha=1;
-  ctx.fillStyle=white;ctx.beginPath();ctx.moveTo(-0.045,0.2);ctx.lineTo(0.045,0.2);ctx.lineTo(0.032,0.5);ctx.lineTo(-0.032,0.5);ctx.closePath();ctx.fill();
-  ctx.fillStyle=pinkS;for(const y of[0.29,0.35,0.41]){ctx.beginPath();ctx.arc(0,y,0.008,0,7);ctx.fill()}
-  ctx.fillStyle=white;ctx.fillRect(-0.2,0.468,0.4,0.034);ctx.fillStyle=whiteS;ctx.fillRect(0.06,0.468,0.14,0.034);ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(bd);
-  const col=new Path2D();col.moveTo(-0.075,0.135);col.quadraticCurveTo(-0.072,0.21,0,0.236);col.quadraticCurveTo(0.072,0.21,0.075,0.135);col.quadraticCurveTo(0,0.168,-0.075,0.135);col.closePath();ofill(ctx,col,white,OL,lw);
-  for(const sd of[-1,1]){ctx.beginPath();ctx.moveTo(sd*0.004,0.22);ctx.lineTo(sd*0.03,0.295);ctx.lineTo(sd*0.016,0.288);ctx.lineTo(sd*0.008,0.3);ctx.closePath();ofill(ctx,null,red,OL,lw*.8);
-    ctx.beginPath();ctx.ellipse(sd*0.032,0.212,0.032,0.019,sd*0.25,0,7);ofill(ctx,null,red,OL,lw)}
-  ctx.beginPath();ctx.ellipse(0,0.214,0.011,0.012,0,0,7);ofill(ctx,null,c('#c22f62'),OL,lw);
-  for(const sd of[-1,1]){ctx.beginPath();ctx.ellipse(sd*0.168,0.205,0.058,0.052,sd*0.3,0,7);ofill(ctx,null,pink,OL,lw);ctx.beginPath();ctx.ellipse(sd*0.195,0.252,0.04,0.014,sd*0.4,0,7);ofill(ctx,null,white,OL,lw)}
-  // 右側（画像右）の腕
-  if(o.pose==='pairPeace'){const hx=o.heartX-0.052;limb(ctx,[[0.185,0.255],[0.21,0.39],[hx,0.215]],0.033,skin,OL,lw)}
-  else{limb(ctx,[[0.185,0.255],[0.245,0.4],[0.158,0.495]],0.033,skin,OL,lw);ctx.beginPath();ctx.ellipse(0.155,0.5,0.022,0.024,0,0,7);ofill(ctx,null,skin,OL,lw)}
-  ctx.save();headT();idolHead(ctx,c,OL,lw);ctx.restore();
-  limb(ctx,[[-0.185,0.255],[-0.32,0.31],[-0.172,0.04]],0.033,skin,OL,lw);
-  peaceHand(ctx,-0.17,0.03,skin,skinS,OL,lw);
+function idolSVG(pose){
+  const OL='#7a4650',SK='#fde6d9',SKS='#f3c3b0',H1='#94543a',H2='#6c3a27',H3='#48241a',HH='#e0a27a',PK='#ff9fc8',PKS='#ea78ab',PKD='#c95c8e',WT='#fffbf8',WTS='#e8d8ea',RD='#f0538b',RDS='#c2366a',SH='#e04a87';
+  GID=0;
+  const defs=`<defs>
+  <linearGradient id="hairG" x1="0" y1="-215" x2="0" y2="580" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H1}"/><stop offset=".3" stop-color="${H2}"/><stop offset="1" stop-color="${H3}"/></linearGradient>
+  <linearGradient id="bangG" x1="0" y1="-200" x2="0" y2="-10" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${H1}"/><stop offset=".65" stop-color="${H2}"/><stop offset="1" stop-color="#53291c"/></linearGradient>
+  <radialGradient id="blushG"><stop offset="0" stop-color="#ff7aa6" stop-opacity=".62"/><stop offset="1" stop-color="#ff7aa6" stop-opacity="0"/></radialGradient>
+  <linearGradient id="irisI" x1="0" y1="-21" x2="0" y2="29" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#2c0e38"/><stop offset=".4" stop-color="#8a3d93"/><stop offset=".8" stop-color="#f18ac8"/><stop offset="1" stop-color="#ffd8ef"/></linearGradient>
+  <linearGradient id="skirtG" x1="0" y1="490" x2="0" y2="930" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffa9cf"/><stop offset="1" stop-color="#ff8cbd"/></linearGradient>
+  <linearGradient id="bodG" x1="0" y1="160" x2="0" y2="500" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#ffb0d3"/><stop offset="1" stop-color="${PK}"/></linearGradient>
+  <clipPath id="ecI"><path d="M -24,4 C -19,-22 13,-31 26,-12 C 29,6 22,25 8,29 C -6,31 -20,22 -24,4 Z"/></clipPath>
+  <clipPath id="cSkirt"><path id="pSkirt" d="M -115,492 C -170,580 -262,760 -336,880 Q -305,915 -270,898 Q -240,925 -205,905 Q -170,930 -135,910 Q -100,932 -68,912 Q -35,934 0,914 Q 35,934 68,912 Q 100,932 135,910 Q 170,930 205,905 Q 240,925 270,898 Q 305,915 336,880 C 262,760 170,580 115,492 Z"/></clipPath>
+  <clipPath id="cBod"><path d="M -40,160 C -80,162 -130,170 -150,190 C -158,240 -150,300 -132,350 C -122,400 -118,450 -112,490 L 112,490 C 118,450 122,400 132,350 C 150,300 158,240 150,190 C 130,170 80,162 40,160 Z"/></clipPath>
+  <clipPath id="cLegL"><path d="M -104,890 C -100,990 -97,1080 -93,1150 C -97,1210 -98,1270 -88,1330 C -84,1358 -82,1384 -80,1402 L -44,1402 C -43,1372 -40,1332 -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z"/></clipPath>
+  <clipPath id="cFace"><path d="M -78,-60 C -80,10 -66,50 -38,70 C -22,80 -10,84 0,84 C 10,84 22,80 38,70 C 66,50 80,10 78,-60 C 74,-150 -74,-150 -78,-60 Z"/></clipPath>
+  <clipPath id="cBang"><path id="pBang" d="M -96,40 C -112,-110 -70,-196 0,-196 C 70,-196 112,-110 96,40 L 84,-6 Q 80,-30 72,-52 Q 66,-40 60,-30 Q 56,-56 46,-74 Q 40,-56 34,-46 Q 26,-66 16,-80 Q 10,-62 4,-54 Q -4,-70 -14,-82 Q -20,-62 -26,-52 Q -34,-70 -46,-76 Q -50,-56 -56,-42 Q -62,-58 -72,-60 Q -76,-34 -84,-6 Z"/></clipPath>
+  </defs>`;
+  const TT='M -86,-130 C -140,-150 -206,-110 -214,-20 C -222,60 -196,140 -204,230 C -212,320 -250,390 -228,470 C -214,520 -176,552 -142,560 C -158,546 -172,528 -170,500 C -168,470 -150,452 -148,420 C -146,370 -168,320 -160,250 C -152,170 -140,110 -142,40 C -144,-20 -124,-80 -84,-104 Z';
+  const tails=[TT,mir(TT)].map((d,i)=>{const s=i?-1:1,M=i?mir:(x=>x);return pth(d,'url(#hairG)',OL)+
+    pth(M('M -150,-40 C -140,60 -158,200 -150,300 C -146,360 -160,420 -152,470 C -168,420 -168,350 -166,290 C -160,200 -150,80 -150,-40 Z'),H3,null,0,'opacity=".45"')+
+    ln(M('M -100,-112 C -160,-80 -184,20 -178,120 C -172,220 -200,320 -196,420'),H3,1.6,.55)+ln(M('M -128,-70 C -170,40 -152,160 -170,260 C -188,360 -216,420 -202,500'),H3,1.4,.5)+
+    pth(M('M -196,-50 C -204,-10 -202,30 -194,62 C -189,30 -189,-10 -196,-50 Z'),HH,null,0,'opacity=".7"')+pth(M('M -214,330 C -222,360 -222,390 -214,420 C -210,390 -210,360 -214,330 Z'),HH,null,0,'opacity=".55"')+
+    `<ellipse cx="${-92*s}" cy="-122" rx="21" ry="16" transform="rotate(${30*s} ${-92*s} -122)" fill="${PK}" stroke="${OL}" stroke-width="2"/>`+ln(M('M -104,-132 C -96,-122 -88,-114 -78,-110'),PKD,1.4,.7)}).join('');
+  const back=pth('M -100,-50 C -116,-170 -62,-210 0,-210 C 62,-210 116,-170 100,-50 C 104,20 98,70 88,118 C 60,128 -60,128 -88,118 C -98,70 -104,20 -100,-50 Z','#5a2e1f',OL);
+  const LEG='M -104,890 C -100,990 -97,1080 -93,1150 C -97,1210 -98,1270 -88,1330 C -84,1358 -82,1384 -80,1402 L -44,1402 C -43,1372 -40,1332 -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z';
+  const legInner=`<path d="M -40,900 C -36,1000 -36,1080 -38,1150 C -36,1200 -36,1250 -40,1300 L -33,1292 C -27,1242 -29,1192 -31,1150 C -29,1080 -25,990 -21,890 Z" fill="${SKS}"/>
+    <rect x="-120" y="1178" width="110" height="240" fill="${WT}"/><rect x="-55" y="1178" width="40" height="240" fill="${WTS}"/>
+    <rect x="-120" y="1178" width="110" height="7" fill="${PK}"/><rect x="-120" y="1190" width="110" height="4" fill="${PK}"/>
+    <ellipse cx="-66" cy="1148" rx="10" ry="6" fill="#fff" opacity=".4"/>`;
+  const SHOE='M -96,1392 C -112,1404 -116,1440 -102,1462 C -88,1480 -46,1480 -36,1462 C -29,1444 -32,1408 -42,1394 C -60,1388 -80,1388 -96,1392 Z';
+  const legs=[0,1].map(i=>{const M=i?mir:(x=>x);return `<g ${i?'transform="scale(-1,1)"':''}><path d="${LEG}" fill="${SK}"/><g clip-path="url(#cLegL)">${legInner}</g>${pth(LEG,'none',OL)}</g>`+
+    pth(M(SHOE),SH,OL)+ln(M('M -97,1414 C -80,1422 -56,1422 -40,1412'),'#a8285e',5)+`<circle cx="${i?52:-52}" cy="1417" r="3.5" fill="#ffd1e4"/>`+ln(M('M -104,1456 C -90,1474 -48,1474 -36,1458'),'#9e2a5c',3)+`<ellipse cx="${i?80:-80}" cy="1440" rx="9" ry="4" fill="#fff" opacity=".5"/>`}).join('');
+  let pet='M -330,860 L -334,925';for(let i=0;i<12;i++){const x0=-334+i*55.67;pet+=` Q ${f1(x0+27.8)},${i%2?976:968} ${f1(x0+55.67)},${925+(i%2?0:5)}`}pet+=' L 330,860 Z';
+  let lace='';for(let i=0;i<12;i++)lace+=`<circle cx="${f1(-306+i*55.67)}" cy="948" r="3.2" fill="${WTS}"/>`;
+  let pleats='';for(let i=-4;i<=4;i++){const xt=i*27,xb=i*70;pleats+=`<path d="M ${xt},492 L ${xt+7},492 L ${xb+30},930 L ${xb},930 Z" fill="${PKS}" opacity=".5"/>`+ln(`M ${xt-3},494 L ${xb-10},925`,'#fff',2.4,.35)}
+  const skirt=pth(pet,WT,OL,2)+lace+`<use href="#pSkirt" fill="url(#skirtG)"/><g clip-path="url(#cSkirt)">${pleats}
+    <path d="M 30,490 L 118,490 C 172,580 262,760 342,886 L 160,950 Z" fill="${PKS}" opacity=".55"/>
+    <path d="M -330,846 Q -300,880 -270,866 Q -240,890 -205,872 Q -170,896 -135,878 Q -100,898 -68,880 Q -35,900 0,882 Q 35,900 68,880 Q 100,898 135,878 Q 170,896 205,872 Q 240,890 270,866 Q 300,880 330,846" fill="none" stroke="${WT}" stroke-width="11"/>
+    <path d="M -330,836 Q -300,870 -270,856 Q -240,880 -205,862 Q -170,886 -135,868 Q -100,888 -68,870 Q -35,890 0,872 Q 35,890 68,870 Q 100,888 135,868 Q 170,886 205,862 Q 240,880 270,856 Q 300,870 330,836" fill="none" stroke="${PKD}" stroke-width="2" opacity=".6"/>
+    </g><use href="#pSkirt" fill="none" stroke="${OL}" stroke-width="2.2"/>`;
+  const neck=pth('M -27,30 C -28,90 -31,130 -38,174 L 38,174 C 31,130 28,90 27,30 Z',SK,OL)+pth('M -28,40 L 28,40 L 28,72 C 14,102 -14,102 -28,72 Z',SKS);
+  const bod=`<g clip-path="url(#cBod)"><rect x="-200" y="140" width="400" height="380" fill="url(#bodG)"/>
+    <path d="M 60,160 C 120,165 160,185 160,200 C 160,280 140,360 124,500 L 62,500 C 82,400 92,300 60,160 Z" fill="${PKS}" opacity=".7"/>
+    ${both('M -112,300 C -82,334 -32,338 -8,312 C -32,326 -82,322 -112,300 Z',PKS)}
+    ${ln('M -80,214 C -88,290 -72,330 -62,490',PKD,1.3,.55)}${ln('M 80,214 C 88,290 72,330 62,490',PKD,1.3,.55)}
+    <path d="M -100,176 C -84,214 -40,236 0,244 C 40,236 84,214 100,176 L 100,194 C 84,230 40,254 0,260 C -40,254 -84,230 -100,194 Z" fill="${PKD}" opacity=".35"/>
+    <path d="M -40,236 L 40,236 L 30,492 L -30,492 Z" fill="${WT}"/><path d="M 14,236 L 40,236 L 30,492 L 10,492 Z" fill="${WTS}" opacity=".7"/>
+    ${[0,1,2,3,4,5,6,7,8,9].map(i=>`<circle cx="-38" cy="${246+i*25}" r="5" fill="none" stroke="${WTS}" stroke-width="1.6"/><circle cx="38" cy="${246+i*25}" r="5" fill="none" stroke="${WTS}" stroke-width="1.6"/>`).join('')}
+    ${[300,350,400,450].map(y=>`<circle cx="0" cy="${y}" r="7" fill="${RD}" stroke="${OL}" stroke-width="1.6"/><circle cx="-2.4" cy="${y-2.4}" r="2" fill="#fff" opacity=".8"/>`).join('')}
+    </g>`+pth('M -40,160 C -80,162 -130,170 -150,190 C -158,240 -150,300 -132,350 C -122,400 -118,450 -112,490 L 112,490 C 118,450 122,400 132,350 C 150,300 158,240 150,190 C 130,170 80,162 40,160 Z','none',OL)+
+    pth('M -116,468 C -40,476 40,476 116,468 L 114,508 C 40,516 -40,516 -114,508 Z',WT,OL)+pth('M 40,474 C 70,474 96,472 116,468 L 114,508 C 96,512 70,514 40,515 Z',WTS,null,0,'opacity=".8"')+
+    pth('M 0,500 C -14,490 -14,478 -6,476 C -2,476 0,479 0,482 C 0,479 2,476 6,476 C 14,478 14,490 0,500 Z',RD,OL,1.5);
+  const COL='M -4,238 C -40,234 -86,214 -102,170 C -80,160 -46,156 -26,150 C -22,188 -14,216 -4,238 Z';
+  const collar=both(COL,WT,OL)+ln('M -8,228 C -40,224 -78,206 -92,176',PK,4,.95)+ln('M 8,228 C 40,224 78,206 92,176',PK,4,.95)+pth('M 4,238 C 14,216 22,188 26,150 C 46,156 80,160 102,170 C 98,182 92,192 84,200 C 60,214 30,228 4,238 Z',WTS,null,0,'opacity=".6"');
+  const RIB='M -4,222 C -30,200 -64,206 -62,227 C -60,248 -30,250 -4,233 Z',TAIL='M -6,236 C -14,262 -24,290 -32,314 L -17,305 L -10,318 C -4,292 0,264 0,240 Z';
+  const ribbon=both(TAIL,RD,OL)+both(RIB,RD,OL)+ln('M -12,226 C -28,216 -46,218 -52,227',RDS,1.6,.8)+ln('M 12,226 C 28,216 46,218 52,227',RDS,1.6,.8)+
+    `<ellipse cx="0" cy="229" rx="11" ry="12.5" fill="${RDS}" stroke="${OL}" stroke-width="2"/><ellipse cx="-3" cy="225" rx="3.5" ry="2.5" fill="#fff" opacity=".6"/>`;
+  const SLV='M -110,170 C -150,150 -206,176 -206,228 C -206,262 -178,276 -148,266 C -134,244 -126,206 -110,170 Z',CUFF='M -198,250 C -188,268 -164,276 -148,268 L -143,283 C -161,294 -194,286 -206,265 Z';
+  const sleeves=both(SLV,PK,OL)+pth('M -136,174 C -128,206 -134,244 -148,266 C -170,272 -190,266 -200,250 C -176,252 -150,236 -136,174 Z',PKS,null,0,'opacity=".55"')+pth('M 136,174 C 128,206 134,244 148,266 C 170,272 190,266 200,250 C 186,230 170,200 136,174 Z',PKS,null,0,'opacity=".7"')+
+    ln('M -132,172 C -160,190 -172,220 -170,252',PKD,1.3,.55)+ln('M -152,166 C -182,186 -194,214 -192,246',PKD,1.3,.5)+ln('M 132,172 C 160,190 172,220 170,252',PKD,1.3,.55)+ln('M 152,166 C 182,186 194,214 192,246',PKD,1.3,.5)+
+    both(CUFF,WT,OL,2);
+  // 腕
+  const AR=(...segs)=>armSVG(segs,SK,SKS,OL);
+  let armR,handR='';
+  if(pose==='pair'){
+    armR=AR([[166,250],[216,388],27,23],[[216,388],[70,238],23,17.5]);
+    handR=pth('M 146,166 C 128,140 80,138 74,182 C 70,200 66,214 58,226 L 72,248 C 92,254 120,264 146,272 C 151,264 149,254 144,249 C 124,233 100,214 100,190 C 100,164 130,160 144,182 C 150,176 150,170 146,166 Z',SK,OL)+
+      pth('M 74,182 C 70,200 66,214 58,226 L 72,248 C 80,246 86,232 88,214 C 90,200 84,186 74,182 Z',SKS,null,0,'opacity=".8"')+
+      ln('M 104,150 C 108,158 110,164 108,172',SKS,1.4)+ln('M 122,146 C 126,154 127,160 126,168',SKS,1.4)+ln('M 90,162 C 96,168 98,176 98,182',SKS,1.4)+ln('M 96,236 C 108,240 122,246 134,254',SKS,1.4);
+  }else{
+    armR=AR([[166,250],[224,388],27,23],[[224,388],[158,478],23,17.5]);
+    handR=pth('M 142,468 C 128,478 112,490 102,500 C 94,508 96,521 106,523 C 120,527 140,517 158,507 C 166,501 172,495 175,487 Z',SK,OL)+
+      ln('M 112,497 C 120,500 126,506 128,513',SKS,1.4)+ln('M 123,490 C 131,494 137,500 139,507',SKS,1.4)+ln('M 134,483 C 142,487 147,493 149,499',SKS,1.4);
+  }
+  const armL=AR([[-166,250],[-262,318],27,24],[[-262,318],[-182,64],24,17.5]);
+  const handL=pth('M -203,6 C -207,30 -201,52 -191,68 L -165,72 C -151,56 -145,30 -147,6 C -161,0 -189,0 -203,6 Z',SK,OL)+
+    limbSVG([-158,8],[-145,-66],9,7.4,SK,SKS,OL,0.05)+limbSVG([-177,6],[-191,-72],9.2,7.4,SK,SKS,OL,0.05)+
+    `<ellipse cx="-190" cy="2" rx="11.5" ry="9" fill="${SK}" stroke="${OL}" stroke-width="2"/><ellipse cx="-203" cy="11" rx="8.5" ry="8" fill="${SK}" stroke="${OL}" stroke-width="2"/>`+
+    limbSVG([-149,44],[-185,13],10.5,8.5,SK,SKS,OL,0.05)+ln('M -196,42 C -184,36 -170,38 -160,46',SKS,1.3)+
+    `<ellipse cx="-145" cy="-66" rx="4" ry="3" fill="#fff" opacity=".6"/><ellipse cx="-191" cy="-72" rx="4" ry="3" fill="#fff" opacity=".6"/>`;
+  // 顔
+  const FACE='M -78,-60 C -80,10 -66,50 -38,70 C -22,80 -10,84 0,84 C 10,84 22,80 38,70 C 66,50 80,10 78,-60 C 74,-150 -74,-150 -78,-60 Z';
+  const face=`<path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFace)"><ellipse cx="0" cy="-56" rx="100" ry="32" fill="${SKS}"/><path d="M 60,-40 C 76,0 70,40 44,70 L 90,90 L 90,-40 Z" fill="${SKS}" opacity=".6"/></g>${pth(FACE,'none',OL)}
+    <ellipse cx="-50" cy="30" rx="28" ry="15" fill="url(#blushG)"/><ellipse cx="50" cy="30" rx="28" ry="15" fill="url(#blushG)"/>
+    ${[-1,1].map(s=>[0,1,2].map(i=>ln(`M ${s*50+(i-1)*8+3},24 L ${s*50+(i-1)*8-2},34`,'#f06d94',1.1,.8)).join('')).join('')}
+    ${eyeIdol(-37,-14,-1)}${eyeIdol(37,-14,1)}
+    ${ln('M 2,22 C 4,25 4,28 2,30','#dd9a88',1.6)}
+    ${pth('M -10,46 C -4,49 4,49 10,46 C 7,59 -7,59 -10,46 Z','#cc4e66',OL,1.4)}<ellipse cx="0" cy="54" rx="5" ry="2.8" fill="#ff93a4"/>`;
+  const SIDE='M -76,-70 C -96,-10 -104,60 -96,130 C -93,142 -85,146 -79,140 C -84,100 -82,40 -66,-22 Z';
+  const hairF=both(SIDE,'url(#bangG)',OL)+ln('M -80,-30 C -90,20 -92,80 -88,126',H3,1.3,.5)+ln('M 80,-30 C 90,20 92,80 88,126',H3,1.3,.5)+
+    `<use href="#pBang" fill="url(#bangG)"/><g clip-path="url(#cBang)">
+      <path d="M -110,-30 C -60,-14 60,-14 110,-30 L 110,50 L -110,50 Z" fill="${H3}" opacity=".45"/>
+      ${[[-72,-60],[-46,-76],[-14,-82],[16,-80],[46,-74],[72,-52]].map(([x,y])=>ln(`M ${f1(x*0.25)},-190 C ${f1(x*0.7)},-150 ${f1(x*0.95)},-110 ${x},${y+4}`,H3,1.4,.5)).join('')}
+      ${[[-50,-134,-.42,22],[-6,-146,-.04,24],[40,-140,.32,20]].map(([x,y,r,w])=>`<path d="M ${x-w},${y+3} Q ${x},${y-6} ${x+w},${y+3} Q ${x},${y+1} ${x-w},${y+3} Z" transform="rotate(${r*40} ${x} ${y})" fill="${HH}" opacity=".9"/>`).join('')}
+      <ellipse cx="-30" cy="-150" rx="3.5" ry="1.6" fill="#fff" opacity=".8"/><ellipse cx="22" cy="-152" rx="3" ry="1.4" fill="#fff" opacity=".8"/>
+    </g><use href="#pBang" fill="none" stroke="${OL}" stroke-width="2.2"/>`+
+    pth('M -4,-194 C 6,-240 52,-246 48,-214 C 40,-228 18,-222 8,-194 Z','url(#bangG)',OL)+
+    ln('M 20,-62 C 32,-70 50,-70 62,-62','#6b3a2c',2.2,.45)+ln('M -20,-62 C -32,-70 -50,-70 -62,-62','#6b3a2c',2.2,.45)+
+    pth('M 82,-166 C 72,-198 106,-216 122,-198 C 132,-184 114,-164 84,-164 Z',PK,OL)+pth('M 78,-166 C 56,-192 36,-178 42,-160 C 48,-146 66,-152 78,-162 Z',PK,OL)+
+    ln('M 88,-170 C 96,-186 108,-192 116,-190',PKD,1.4,.6)+ln('M 72,-168 C 62,-176 52,-176 48,-168',PKD,1.4,.6)+`<circle cx="80" cy="-165" r="10" fill="${PKD}" stroke="${OL}" stroke-width="2"/><ellipse cx="104" cy="-196" rx="6" ry="3" fill="#fff" opacity=".5"/>`;
+  const HT='translate(0,20) translate(0,84) scale(1.08) translate(0,-84)';
+  return defs+`<g transform="${HT}">${tails}${back}</g>`+`<g transform="scale(1.18,1)">${legs}</g>`+skirt+neck+bod+collar+ribbon+sleeves+armR+handR+`<g transform="${HT}">${face}${hairF}</g>`+armL+handL;
 }
-function drawFan(ctx,c,o,t){
-  const OL=c('#3e3a48'),lw=0.0028;ctx.lineJoin='round';ctx.lineCap='round';
-  const hair=c('#24232b'),skin=c('#f7d8c4'),skinS=c('#e5b9a3'),tee=c('#86c3ec'),teeS=c('#5f9fd0'),jean=c('#3d4f7c'),jeanS=c('#2c3a5e');
-  ctx.save();ctx.translate(0,FEET);ctx.scale(o.s,o.s);ctx.translate(0,-FEET);
-  const tilt=o.tilt||0,headT=()=>{ctx.translate(0,0.09);ctx.rotate(tilt);ctx.scale(1.04,1.04);ctx.translate(0,-0.09)};
-  ctx.save();headT();ctx.beginPath();ctx.ellipse(0,-0.072,0.1,0.12,0,0,7);ofill(ctx,null,hair,OL,lw);ctx.restore();
-  for(const sd of[-1,1]){const p=new Path2D();p.moveTo(sd*0.085-0.056,0.6);p.lineTo(sd*0.092-0.046,1.42);p.lineTo(sd*0.092+0.046,1.42);p.lineTo(sd*0.085+0.056,0.6);p.closePath();
-    ctx.fillStyle=jean;ctx.fill(p);ctx.save();ctx.clip(p);ctx.fillStyle=jeanS;ctx.fillRect(sd*0.085+(sd>0?0.02:-0.06),0.6,0.04,0.9);ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(p);
-    ctx.beginPath();ctx.ellipse(sd*0.098,1.445,0.058,0.03,0,0,7);ofill(ctx,null,c('#f4f4f4'),OL,lw);ctx.strokeStyle=c('#b8b8c4');ctx.lineWidth=0.004;ctx.beginPath();ctx.moveTo(sd*0.098-0.05,1.458);ctx.lineTo(sd*0.098+0.05,1.458);ctx.stroke()}
-  ctx.beginPath();ctx.rect(-0.034,0.05,0.068,0.13);ctx.fillStyle=skin;ctx.fill();ctx.beginPath();ctx.ellipse(0,0.105,0.034,0.016,0,0,7);ctx.fillStyle=skinS;ctx.fill();
-  for(const sd of[-1,1]){ctx.beginPath();ctx.moveTo(sd*0.17,0.17);ctx.lineTo(sd*0.295,0.33);ctx.lineTo(sd*0.245,0.375);ctx.lineTo(sd*0.17,0.31);ctx.closePath();ofill(ctx,null,tee,OL,lw)}
-  const ts=new Path2D();ts.moveTo(-0.2,0.18);ts.quadraticCurveTo(0,0.13,0.2,0.18);ts.lineTo(0.207,0.64);ts.quadraticCurveTo(0,0.66,-0.207,0.64);ts.closePath();
-  ctx.fillStyle=tee;ctx.fill(ts);ctx.save();ctx.clip(ts);ctx.fillStyle=teeS;ctx.fillRect(0.11,0.1,0.2,0.6);ctx.fillRect(-0.3,0.6,0.6,0.1);
-  ctx.fillStyle=c('#ff7fb0');ctx.beginPath();ctx.moveTo(0,0.345);ctx.bezierCurveTo(-0.05,0.31,-0.035,0.27,0,0.29);ctx.bezierCurveTo(0.035,0.27,0.05,0.31,0,0.345);ctx.fill();
-  ctx.fillStyle=c('#ffffff');ctx.fillRect(-0.06,0.37,0.12,0.012);ctx.fillRect(-0.04,0.392,0.08,0.008);ctx.restore();ctx.strokeStyle=OL;ctx.lineWidth=lw;ctx.stroke(ts);
-  ctx.beginPath();ctx.ellipse(0,0.152,0.048,0.022,0,0,Math.PI);ctx.strokeStyle=teeS;ctx.lineWidth=0.008;ctx.stroke();
-  limb(ctx,[[0.268,0.355],[0.275,0.52],[0.252,0.66]],0.044,skin,OL,lw);ctx.beginPath();ctx.ellipse(0.25,0.672,0.027,0.031,0,0,7);ofill(ctx,null,skin,OL,lw);
-  const tx=(o.heartX+0.052)/o.s,ty=(0.215-FEET)/o.s+FEET;
-  limb(ctx,[[-0.268,0.355],[-0.255,0.47],[tx,ty]],0.044,skin,OL,lw);
-  ctx.save();headT();fanHead(ctx,c,OL,lw);ctx.restore();
-  ctx.restore();
+function fanSVG(){
+  const OL='#4a4258',SK='#f9dfcd',SKS='#eac0aa',HA='#2c2b38',HH='#5e5d74',TE='#8dc9ef',TES='#66a7d7',JE='#41557f',JES='#2f3f63',WT='#f6f6f8',WTS='#cfd2dc';
+  GID=100;
+  const defs=`<defs><linearGradient id="hairF" x1="0" y1="-210" x2="0" y2="20" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#40404f"/><stop offset="1" stop-color="${HA}"/></linearGradient>
+  <linearGradient id="irisF" x1="0" y1="-15" x2="0" y2="17" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#20140d"/><stop offset=".5" stop-color="#5a3826"/><stop offset="1" stop-color="#b07a52"/></linearGradient>
+  <radialGradient id="blushF"><stop offset="0" stop-color="#ff8a9e" stop-opacity=".35"/><stop offset="1" stop-color="#ff8a9e" stop-opacity="0"/></radialGradient>
+  <clipPath id="ecF"><path d="M -22,2 C -16,-16 12,-22 22,-8 C 23,6 16,16 4,18 C -8,19 -19,12 -22,2 Z"/></clipPath>
+  <clipPath id="cTee"><path id="pTee" d="M -46,168 C -90,170 -150,178 -186,200 C -192,300 -184,480 -178,650 C -100,664 100,664 178,650 C 184,480 192,300 186,200 C 150,178 90,170 46,168 Z"/></clipPath>
+  <clipPath id="cFaceF"><path d="M -82,-60 C -84,10 -72,52 -40,74 C -24,86 -10,90 0,90 C 10,90 24,86 40,74 C 72,52 84,10 82,-60 C 78,-152 -78,-152 -82,-60 Z"/></clipPath></defs>`;
+  const back=pth('M -98,-60 C -110,-170 -60,-206 0,-206 C 64,-206 110,-168 98,-60 C 100,-20 96,10 88,30 L -88,30 C -96,10 -100,-20 -98,-60 Z',HA,OL);
+  const LEG='M -152,606 C -148,820 -138,1060 -132,1400 L -50,1400 C -46,1150 -30,880 -6,640 Z';
+  const legs=pth('M -152,600 L 152,600 L 152,664 L 0,724 L -152,664 Z',JE)+both(LEG,JE,OL)+pth('M -70,640 C -66,900 -62,1150 -58,1400 L -50,1400 C -46,1150 -30,880 -6,640 Z',JES,null,0,'opacity=".8"')+pth('M 70,640 C 66,900 62,1150 58,1400 L 50,1400 C 46,1150 30,880 6,640 Z',JES,null,0,'opacity=".5"')+
+    ln('M -126,1080 C -110,1090 -90,1088 -70,1078',JES,2)+ln('M -122,1110 C -104,1116 -88,1114 -74,1106',JES,1.6)+ln('M 126,1080 C 110,1090 90,1088 70,1078',JES,2)+
+    both('M -134,1372 L -48,1372 L -50,1400 L -132,1400 Z','#4d6390',OL,1.8)+
+    both('M -144,1392 C -160,1410 -162,1446 -148,1462 C -130,1478 -56,1478 -42,1462 C -36,1440 -42,1402 -54,1392 Z',WT,OL)+
+    ln('M -152,1452 C -130,1468 -60,1468 -42,1452','#b9bccb',4)+ln('M -128,1404 L -112,1418 M -120,1398 L -104,1412 M -112,1394 L -96,1408',WTS,2)+ln('M 128,1404 L 112,1418 M 120,1398 L 104,1412 M 112,1394 L 96,1408',WTS,2)+ln('M 152,1452 C 130,1468 60,1468 42,1452','#b9bccb',4);
+  const neck=pth('M -33,30 C -34,90 -36,130 -42,178 L 42,178 C 36,130 34,90 33,30 Z',SK,OL)+pth('M -34,40 L 34,40 L 34,76 C 18,106 -18,106 -34,76 Z',SKS);
+  const SLV='M -150,182 C -196,190 -240,236 -254,302 C -238,318 -214,326 -196,324 C -190,290 -186,250 -176,214 Z';
+  const tee=both(SLV,TE,OL)+pth('M 176,214 C 186,250 190,290 196,324 C 214,326 238,318 254,302 C 246,270 232,244 214,224 Z',TES,null,0,'opacity=".8"')+
+    `<use href="#pTee" fill="${TE}"/><g clip-path="url(#cTee)">
+    <path d="M 90,170 C 140,200 150,400 140,660 L 200,660 L 200,170 Z" fill="${TES}"/>
+    ${ln('M -150,420 C -124,444 -108,480 -104,530',TES,2.2)}${ln('M -60,560 C -40,590 -20,610 6,620',TES,2)}${ln('M 120,300 C 110,340 108,380 112,420',TES,2)}
+    <path d="M 0,368 C -40,340 -44,300 -18,296 C -8,295 -2,302 0,308 C 2,302 8,295 18,296 C 44,300 40,340 0,368 Z" fill="#ff7fb0" stroke="#fff" stroke-width="4"/>
+    <rect x="-56" y="384" width="112" height="10" rx="5" fill="#fff"/><rect x="-38" y="404" width="76" height="7" rx="3.5" fill="#fff" opacity=".85"/>
+    </g><use href="#pTee" fill="none" stroke="${OL}" stroke-width="2.2"/>`+ln('M -46,168 C -30,198 30,198 46,168',TES,8)+pth('M -46,168 C -30,198 30,198 46,168','none',OL,2);
+  const AR=(...segs)=>armSVG(segs,SK,SKS,OL);
+  const armR=AR([[212,300],[232,452],31,27],[[232,452],[214,602],27,20])+pth('M 194,596 C 188,630 194,662 210,677 C 224,688 244,676 247,657 C 249,636 241,612 233,596 Z',SK,OL)+ln('M 210,640 C 212,654 216,664 222,670 M 224,636 C 228,650 232,660 236,664',SKS,1.4);
+  const armL=AR([[-212,300],[-236,452],31,27],[[-236,452],[-66,262],27,19]);
+  const half=`<g transform="translate(0,1470) scale(-0.98039,0.98039) translate(0,-1470)">${pth('M 146,166 C 128,140 80,138 74,182 C 70,200 66,214 58,226 L 72,248 C 92,254 120,264 146,272 C 151,264 149,254 144,249 C 124,233 100,214 100,190 C 100,164 130,160 144,182 C 150,176 150,170 146,166 Z',SK,OL)+
+    pth('M 74,182 C 70,200 66,214 58,226 L 72,248 C 80,246 86,232 88,214 C 90,200 84,186 74,182 Z',SKS,null,0,'opacity=".8"')+ln('M 104,150 C 108,158 110,164 108,172',SKS,1.4)+ln('M 122,146 C 126,154 127,160 126,168',SKS,1.4)+ln('M 90,162 C 96,168 98,176 98,182',SKS,1.4)+ln('M 96,236 C 108,240 122,246 134,254',SKS,1.4)}</g>`;
+  const FACE='M -82,-60 C -84,10 -72,52 -40,74 C -24,86 -10,90 0,90 C 10,90 24,86 40,74 C 72,52 84,10 82,-60 C 78,-152 -78,-152 -82,-60 Z';
+  const head=`<ellipse cx="-82" cy="-6" rx="15" ry="23" fill="${SK}" stroke="${OL}" stroke-width="2"/><ellipse cx="82" cy="-6" rx="15" ry="23" fill="${SK}" stroke="${OL}" stroke-width="2"/>
+    <path d="${FACE}" fill="${SK}"/><g clip-path="url(#cFaceF)"><ellipse cx="0" cy="-70" rx="100" ry="30" fill="${SKS}"/><path d="M 62,-40 C 78,0 72,44 44,74 L 92,96 L 92,-40 Z" fill="${SKS}" opacity=".6"/></g>${pth(FACE,'none',OL)}
+    <ellipse cx="-52" cy="32" rx="22" ry="11" fill="url(#blushF)"/><ellipse cx="52" cy="32" rx="22" ry="11" fill="url(#blushF)"/>
+    ${eyeFan(-37,-22,-1)}${eyeFan(37,-22,1)}
+    ${ln('M 18,-54 C 32,-62 50,-62 64,-54',HA,4.5)}${ln('M -18,-54 C -32,-62 -50,-62 -64,-54',HA,4.5)}
+    ${ln('M 2,20 C 5,26 5,30 1,33','#d09a87',1.6)}
+    ${pth('M -15,48 C -6,54 6,54 15,48 C 10,61 -10,61 -15,48 Z','#c75e6a',OL,1.4)}
+    ${pth('M -100,0 C -116,-120 -66,-204 0,-204 C 70,-204 116,-118 100,0 L 90,-40 Q 86,-62 78,-84 Q 70,-68 62,-60 Q 56,-84 44,-100 Q 36,-82 28,-74 Q 18,-94 4,-104 Q -2,-86 -10,-78 Q -22,-96 -36,-102 Q -40,-82 -48,-74 Q -60,-90 -74,-92 Q -76,-68 -82,-52 Q -88,-30 -94,-6 Z','url(#hairF)',OL)}
+    ${[[-66,-140,-.5],[-36,-156,-.25],[-4,-162,0],[28,-158,.25],[58,-144,.5]].map(([x,y,r])=>`<ellipse cx="${x}" cy="${y}" rx="12" ry="3.2" transform="rotate(${r*40} ${x} ${y})" fill="${HH}" opacity=".9"/>`).join('')}
+    ${ln('M -40,-180 C -50,-140 -46,-110 -48,-80 M 10,-190 C 6,-150 6,-120 4,-104 M 50,-176 C 56,-140 56,-112 44,-100',HA,1.3,.6)}`;
+  const HT='translate(0,16) translate(0,90) scale(1.05) translate(0,-90)';
+  return defs+`<g transform="${HT}">${back}</g>`+legs+neck+tee+armR+armL+half+`<g transform="${HT}">${head}</g>`;
+}
+const SPRITE_LEVELS=[{vb:[-420,-260,840,1760],res:0.8},{vb:[-320,-260,640,860],res:1.7},{vb:[-115,-225,230,340],res:3.6}];
+const SPR={};
+function getSprite(key){
+  if(SPR[key])return SPR[key];
+  const body=key==='fan'?fanSVG():idolSVG(key==='idolPair'?'pair':'solo');
+  const sp={levels:SPRITE_LEVELS.map(l=>Object.assign({cv:null},l))};SPR[key]=sp;
+  sp.levels.forEach(l=>{const w=Math.round(l.vb[2]*l.res),h=Math.round(l.vb[3]*l.res);
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="${l.vb.join(' ')}" width="${w}" height="${h}">${body}</svg>`;
+    const img=new Image();img.onload=()=>{const cv=document.createElement('canvas');cv.width=w;cv.height=h;cv.getContext('2d').drawImage(img,0,0,w,h);l.cv=cv};
+    img.onerror=()=>console.warn('sprite failed',key);img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg)});
+  return sp;
+}
+const tmpC=document.createElement('canvas'),tmpX=tmpC.getContext('2d');
+function drawSprite(ctx,W,H,sp,ox,oy,sc,Lp){
+  const base=sp.levels[0];if(!base.cv)return;
+  const[bx,by,bw,bh]=base.vb;
+  const x0=Math.max(0,Math.floor(ox+bx*sc)),y0=Math.max(0,Math.floor(oy+by*sc)),x1=Math.min(W,Math.ceil(ox+(bx+bw)*sc)),y1=Math.min(H,Math.ceil(oy+(by+bh)*sc));
+  if(x1<=x0||y1<=y0)return;
+  const cw=x1-x0,ch=y1-y0;if(tmpC.width<cw||tmpC.height<ch){tmpC.width=Math.max(cw,tmpC.width);tmpC.height=Math.max(ch,tmpC.height)}
+  tmpX.setTransform(1,0,0,1,0,0);tmpX.globalCompositeOperation='source-over';tmpX.clearRect(0,0,cw,ch);tmpX.imageSmoothingEnabled=true;tmpX.imageSmoothingQuality='high';
+  sp.levels.forEach((l,i)=>{if(!l.cv)return;if(i>0&&sc<=sp.levels[i-1].res*1.15)return;const[vx,vy,vw,vh]=l.vb;tmpX.drawImage(l.cv,ox+vx*sc-x0,oy+vy*sc-y0,vw*sc,vh*sc)});
+  if(Lp<0.995||Lp>1.005){tmpX.globalCompositeOperation='source-atop';tmpX.fillStyle=Lp<1?`rgba(0,0,0,${(1-Lp).toFixed(3)})`:`rgba(255,255,255,${Math.min(.95,1-1/Math.pow(Lp,1.6)).toFixed(3)})`;tmpX.fillRect(0,0,cw,ch)}
+  ctx.drawImage(tmpC,0,0,cw,ch,x0,y0,cw,ch);
 }
 function drawScene(ctx,W,H,cam,L,t){
   const k=W/2/cam.hu,D=cam.D,Zw=D+1.2,Zb=D+0.6;
@@ -417,11 +502,11 @@ function drawScene(ctx,W,H,cam,L,t){
   for(const[x,y,col]of bl){const gr=ctx.createRadialGradient(x-0.04,y-0.05,0.005,x,y,0.15);gr.addColorStop(0,c('#ffffff'));gr.addColorStop(.25,c(col));gr.addColorStop(1,shade(col,L(Zb)*0.62));
     ctx.fillStyle=gr;ctx.beginPath();ctx.ellipse(x,y,0.12,0.14,0,0,7);ctx.fill();ctx.fillStyle=c(col);ctx.beginPath();ctx.moveTo(x,y+0.135);ctx.lineTo(x-0.015,y+0.16);ctx.lineTo(x+0.015,y+0.16);ctx.closePath();ctx.fill()}
   // 人物
-  c=mkC(L(D));
   for(const s of subs){plane(D,s.x,0);ctx.fillStyle='rgba(0,0,0,.35)';ctx.beginPath();ctx.ellipse(0,FEET+0.005,0.27,0.03,0,0,7);ctx.fill()}
-  const mid=subs.length>1?(subs[0].x+subs[1].x)/2:0;
-  for(const s of subs.slice().reverse()){plane(D,s.x,s.bob);const o=Object.assign({heartX:mid-s.x},s);s.kind==='fan'?drawFan(ctx,c,o,t):drawIdol(ctx,c,o,t)}
-  if(subs.length>1){plane(D,mid,(subs[0].bob+subs[1].bob)/2);heartHands(ctx,c)}
+  ctx.setTransform(1,0,0,1,0,0);const Lp=L(D),sc=k/D/1000;
+  for(const s of subs.slice().reverse()){const sp=getSprite(s.kind==='fan'?'fan':s.pose==='pairPeace'?'idolPair':'idolSolo');
+    const[ox,oy0]=toPx(s.x,s.bob,D);let scl=sc,oy=oy0;if(s.s!==1){const feet=oy0+FEET*1000*sc;scl=sc*s.s;oy=feet-FEET*1000*scl}
+    drawSprite(ctx,W,H,sp,ox,oy,scl,Lp)}
   ctx.restore();ctx.setTransform(1,0,0,1,0,0);
 }
 
@@ -564,7 +649,7 @@ function drawMarks(){
 /* 構図バランスの採点
    上下30（頭上の余白と目線の高さ）・左右20・切れ位置15（関節で切らない）・画面の使い方15（手の見切れ・人物の大きさ）・ピント10・明るさ10 */
 const CUTS=[ // 下端（m・カメラ高=0）がどこを通るか。上から順
- {y:-0.08,name:'あご',ok:false},{y:-0.16,name:'首',ok:false},{y:-0.37,name:'胸',ok:true},{y:-0.43,name:'ひじ',ok:false,soft:true},
+ {y:-0.105,name:'あご',ok:false},{y:-0.165,name:'首',ok:false},{y:-0.37,name:'胸',ok:true},{y:-0.43,name:'ひじ',ok:false,soft:true},
  {y:-0.47,name:'ウエストの上',ok:true},{y:-0.55,name:'腰',ok:false},{y:-1.10,name:'太もも',ok:true},{y:-1.21,name:'ひざ',ok:false},
  {y:-1.34,name:'すね',ok:true},{y:-1.49,name:'足首',ok:false},{y:-99,name:'足元',ok:true,txt:'足元まで入っている'}];
 function judge(sh){
@@ -729,6 +814,7 @@ window.addEventListener('resize',layout);
 document.addEventListener('keydown',e=>{if(e.code==='Space'&&e.target===document.body){e.preventDefault();$('result').hidden?shoot():$('again').click()}});
 
 newQuiz();renderAll();layout();requestAnimationFrame(loop);
+getSprite('idolSolo');setTimeout(()=>{getSprite('idolPair');getSprite('fan')},400);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(layout);
 window.__cheki={geom,shiftPct,S,MODELS,FM,M};
 })();
